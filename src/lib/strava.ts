@@ -88,6 +88,57 @@ export async function getAthleteRunCount(
   return stats.all_run_totals.count
 }
 
+export interface StravaSplit {
+  distance: number
+  elapsed_time: number
+  elevation_difference: number
+  moving_time: number
+  split: number
+  average_speed: number
+  average_heartrate?: number
+  average_grade_adjusted_speed?: number
+  pace_zone?: number
+}
+
+export interface StravaLap {
+  id: number
+  lap_index: number
+  name: string
+  elapsed_time: number
+  moving_time: number
+  distance: number
+  start_date: string
+  average_speed: number
+  max_speed: number
+  total_elevation_gain: number
+  average_cadence?: number
+  average_heartrate?: number
+  max_heartrate?: number
+  start_index: number
+  end_index: number
+  pace_zone?: number
+}
+
+export interface StravaActivityDetail extends StravaActivity {
+  description?: string
+  calories?: number
+  suffer_score?: number
+  average_cadence?: number
+  splits_metric?: StravaSplit[]
+  laps?: StravaLap[]
+}
+
+export async function getActivityDetail(
+  userId: string,
+  activityId: number
+): Promise<{ detail: StravaActivityDetail; rateLimit: StravaRateLimit }> {
+  const { data, rateLimit } = await stravaFetch(
+    userId,
+    `/activities/${activityId}`
+  )
+  return { detail: data as StravaActivityDetail, rateLimit }
+}
+
 export async function getActivities(
   userId: string,
   options: { after?: number; page?: number; perPage?: number } = {}

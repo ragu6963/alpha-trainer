@@ -42,7 +42,37 @@ model Activity {
   elevLow            Float?
   startLatlng        Json?
   endLatlng          Json?
+  // Detail fields (fetched from /activities/{id})
+  description        String?
+  calories           Float?
+  sufferScore        Float?
+  averageCadence     Float?
+  splitsMetric       Json?
   createdAt          DateTime @default(now())
+
+  laps               Lap[]
+}
+
+model Lap {
+  id                 String   @id @default(uuid())
+  stravaLapId        BigInt   @unique
+  activityId         String
+  activity           Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  lapIndex           Int
+  name               String
+  elapsedTime        Int
+  movingTime         Int
+  distance           Float
+  startDate          DateTime
+  averageSpeed       Float
+  maxSpeed           Float
+  totalElevationGain Float
+  averageCadence     Float?
+  averageHeartrate   Float?
+  maxHeartrate       Float?
+  startIndex         Int
+  endIndex           Int
+  paceZone           Int?
 }
 
 model Conversation {
