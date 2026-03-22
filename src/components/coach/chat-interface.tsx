@@ -179,7 +179,7 @@ export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
               <button
                 key={action.label}
                 onClick={() => handleQuickAction(action.prompt)}
-                className="flex flex-col items-start gap-0.5 rounded-xl border border-input bg-background px-5 py-4 text-left hover:bg-muted transition-colors"
+                className="flex flex-col items-start gap-0.5 rounded-xl border border-input bg-background px-5 py-4 text-left hover:bg-muted transition-colors cursor-pointer"
               >
                 <span className="font-medium">{action.label}</span>
                 <span className="text-sm text-muted-foreground">{action.description}</span>

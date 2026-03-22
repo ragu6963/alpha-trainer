@@ -35,6 +35,14 @@ function formatDate(date: Date) {
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatMapLink(latlng: any) {
+  if (Array.isArray(latlng) && latlng.length === 2 && typeof latlng[0] === 'number') {
+    return `https://www.google.com/maps/search/?api=1&query=${latlng[0]},${latlng[1]}`
+  }
+  return null
+}
+
 function DataCard({ label, value }: { label: string; value: string }) {
   return (
     <Card>
@@ -61,9 +69,17 @@ export default async function ActivityDetailPage({
   if (!dbUser) redirect('/')
 
   const { id } = await params
-  const activity = await prisma.activity.findUnique({ where: { id } })
+  const activity = await prisma.activity.findUnique({
+    where: { id },
+    include: {
+      laps: { orderBy: { lapIndex: 'asc' } },
+    },
+  })
 
   if (!activity || activity.userId !== dbUser.id) notFound()
+
+  const startLink = formatMapLink(activity.startLatlng)
+  const endLink = formatMapLink(activity.endLatlng)
 
   return (
     <div className="space-y-6">
@@ -76,6 +92,27 @@ export default async function ActivityDetailPage({
         </Link>
         <h1 className="text-2xl font-bold mt-2">{activity.name}</h1>
         <p className="text-sm text-muted-foreground mt-1">{formatDate(activity.startDate)}</p>
+
+        {activity.description && (
+          <p className="mt-3 text-sm border-l-2 border-primary pl-3 text-muted-foreground italic">
+            &quot;{activity.description}&quot;
+          </p>
+        )}
+
+        {(activity.startLatlng || activity.endLatlng) && (
+          <div className="flex gap-4 mt-3 text-sm text-foreground">
+            {formatMapLink(activity.startLatlng) && (
+              <a href={formatMapLink(activity.startLatlng)!} target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-1">
+                📍 시작 지점
+              </a>
+            )}
+            {formatMapLink(activity.endLatlng) && (
+              <a href={formatMapLink(activity.endLatlng)!} target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-1">
+                🏁 종료 지점
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -97,7 +134,47 @@ export default async function ActivityDetailPage({
         {activity.maxHeartrate != null && (
           <DataCard label="최고 심박수" value={`${Math.round(activity.maxHeartrate)} bpm`} />
         )}
+        {activity.calories != null && (
+          <DataCard label="소모 칼로리" value={`${Math.round(activity.calories)} kcal`} />
+        )}
+        {activity.averageCadence != null && (
+          <DataCard label="평균 케이던스" value={`${Math.round(activity.averageCadence * 2)} spm`} />
+        )}
+        {activity.sufferScore != null && (
+          <DataCard label="훈련 스트레스(Suffer Score)" value={`${Math.round(activity.sufferScore)}`} />
+        )}
       </div>
+
+      {activity.laps.length > 0 && (
+        <div className="rounded-xl border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/30">
+                <tr>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium w-12">#</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">거리</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">페이스</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">고도차이</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">시간</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">심박수</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.laps.map((lap) => (
+                  <tr key={lap.id} className="border-t hover:bg-muted/30 transition-colors">
+                    <td className="py-2 px-4 font-medium">{lap.lapIndex}</td>
+                    <td className="py-2 px-4">{formatDistanceKm(lap.distance)}</td>
+                    <td className="py-2 px-4 text-right">{formatPace(lap.averageSpeed)}</td>
+                    <td className="py-2 px-4 text-right">{lap.totalElevationGain?.toFixed(1) ?? '-'} m</td>
+                    <td className="py-2 px-4 text-right">{formatDuration(lap.elapsedTime)}</td>
+                    <td className="py-2 px-4 text-right">{lap.averageHeartrate ? Math.round(lap.averageHeartrate) : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

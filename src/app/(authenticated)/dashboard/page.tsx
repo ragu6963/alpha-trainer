@@ -5,6 +5,8 @@ import SyncPanel from '@/components/dashboard/sync-panel'
 import StatsCards from '@/components/dashboard/stats-cards'
 import ActivityList, { type ActivityItem } from '@/components/dashboard/activity-list'
 import StravaConnectBanner from '@/components/dashboard/strava-connect-banner'
+import ChartSectionWrapper from '@/components/dashboard/chart-section-wrapper'
+import { Suspense } from 'react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -71,12 +73,16 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">대시보드</h1>
-
+      <SyncPanel lastSyncedAt={dbUser.lastSyncedAt} />
       <StatsCards
         count={weekCount}
         distanceM={weekSums._sum.distance ?? 0}
         movingTimeSec={weekSums._sum.movingTime ?? 0}
       />
+
+      <Suspense fallback={<div className="h-[300px] flex flex-col items-center justify-center border rounded-xl animate-pulse bg-muted/50 text-sm text-muted-foreground">차트 데이터 불러오는 중...</div>}>
+        <ChartSectionWrapper userId={dbUser.id} />
+      </Suspense>
 
       <ActivityList
         initialActivities={initialActivities}
@@ -84,7 +90,6 @@ export default async function DashboardPage() {
         initialTotalPages={Math.ceil(total / 10)}
       />
 
-      <SyncPanel lastSyncedAt={dbUser.lastSyncedAt} />
     </div>
   )
 }

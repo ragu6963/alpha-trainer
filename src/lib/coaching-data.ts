@@ -116,11 +116,19 @@ export async function getCoachingData(userId: string): Promise<string> {
     lines.push('')
     lines.push(`[최근 활동 상세 (${recentActivities.length}개)]`)
     for (const a of recentActivities) {
-      const pace = formatPace(a.averageSpeed)
-      const hr = a.averageHeartrate ? `, 평균 심박수 ${Math.round(a.averageHeartrate)}bpm` : ''
-      lines.push(
-        `- ${formatDate(a.startDate)} "${a.name}": ${formatDistanceKm(a.distance)}, ${formatDuration(a.movingTime)}, 페이스 ${pace}${hr}`
-      )
+      const record = {
+        date: formatDate(a.startDate),
+        name: a.name,
+        distance: formatDistanceKm(a.distance),
+        duration: formatDuration(a.movingTime),
+        pace: formatPace(a.averageSpeed),
+        averageHeartrate: a.averageHeartrate ? Math.round(a.averageHeartrate) : null,
+        maxHeartrate: a.maxHeartrate ? Math.round(a.maxHeartrate) : null,
+        totalElevationGain: a.totalElevationGain,
+        averageCadence: a.averageCadence ? Math.round(a.averageCadence) : null,
+        calories: a.calories ? Math.round(a.calories) : null,
+      }
+      lines.push(JSON.stringify(record))
     }
   } else {
     lines.push('')
