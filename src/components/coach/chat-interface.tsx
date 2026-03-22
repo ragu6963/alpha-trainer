@@ -289,7 +289,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="inline-flex items-center justify-center rounded-full w-9 h-9 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+          className="inline-flex items-center justify-center rounded-full w-11 h-11 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
           aria-label="전송"
         >
           <svg

@@ -108,7 +108,7 @@ export default function SyncPanel({
 
   return (
     <div className="rounded-lg border p-4 space-y-3">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <p className="text-sm font-medium">Strava 동기화</p>
           <p className="text-xs text-muted-foreground">
@@ -118,10 +118,10 @@ export default function SyncPanel({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => handleSync(false)} disabled={isSyncing} size="sm">
+          <Button onClick={() => handleSync(false)} disabled={isSyncing} size="sm" className="flex-1 sm:flex-none">
             {isSyncing ? '동기화 중...' : '동기화'}
           </Button>
-          <Button onClick={() => handleSync(true)} disabled={isSyncing} size="sm" variant="outline">
+          <Button onClick={() => handleSync(true)} disabled={isSyncing} size="sm" variant="outline" className="flex-1 sm:flex-none">
             {isSyncing ? '동기화 중...' : '전체 재동기화'}
           </Button>
         </div>

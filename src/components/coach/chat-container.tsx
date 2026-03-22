@@ -156,7 +156,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
               <SheetHeader className="p-4 border-b">
                 <SheetTitle>이전 대화</SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col h-[calc(100vh-4rem)]">
+              <div className="flex flex-col h-[calc(100dvh-4rem)]">
                 <div className="p-4 border-b">
                   <Button onClick={handleNewChat} className="w-full justify-start gap-2" variant="default">
                     <Plus className="w-4 h-4" />

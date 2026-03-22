@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 
 export type ActivityItem = {
@@ -54,9 +55,12 @@ export default function ActivityList({
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialActivities.length < initialTotal)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // ref로 loading 상태 추적 — observer callback의 race condition 방지
+  const loadingRef = useRef(false)
 
   const loadMore = useCallback(async () => {
-    if (loading || !hasMore) return
+    if (loadingRef.current || !hasMore) return
+    loadingRef.current = true
     setLoading(true)
     try {
       const nextPage = page + 1
@@ -74,11 +78,12 @@ export default function ActivityList({
         setHasMore(false)
       }
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }, [loading, hasMore, page])
+  }, [hasMore, page])
 
-  // IntersectionObserver for infinite scroll
+  // 데스크톱 전용 IntersectionObserver (모바일은 "더 보기" 버튼 사용)
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
@@ -89,7 +94,7 @@ export default function ActivityList({
           loadMore()
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: '100px' }
     )
 
     observer.observe(sentinel)
@@ -98,7 +103,7 @@ export default function ActivityList({
 
   if (total === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-8 text-center space-y-2">
+      <div className="rounded-xl border border-dashed p-4 sm:p-8 text-center space-y-2">
         <p className="text-sm font-medium">아직 러닝 기록이 없습니다</p>
         <p className="text-xs text-muted-foreground">
           위의 동기화 버튼을 눌러 Strava 활동을 불러오세요.
@@ -169,8 +174,30 @@ export default function ActivityList({
         ))}
       </div>
 
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="flex justify-center py-4">
+      {/* 모바일: "더 보기" 버튼 (자동 로딩 없음) */}
+      {hasMore && (
+        <div className="sm:hidden flex justify-center py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                불러오는 중...
+              </span>
+            ) : (
+              `더 보기 (${activities.length} / ${total})`
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* 데스크톱: IntersectionObserver sentinel */}
+      <div ref={sentinelRef} className="hidden sm:flex justify-center py-4">
         {loading && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -181,6 +208,13 @@ export default function ActivityList({
           <p className="text-xs text-muted-foreground">모든 기록을 불러왔습니다</p>
         )}
       </div>
+
+      {/* 모바일: 마지막 페이지 안내 */}
+      {!hasMore && activities.length > PER_PAGE && (
+        <p className="sm:hidden text-center text-xs text-muted-foreground py-2">
+          모든 기록을 불러왔습니다
+        </p>
+      )}
     </div>
   )
 }

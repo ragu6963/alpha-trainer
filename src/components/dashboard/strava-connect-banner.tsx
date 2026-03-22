@@ -4,7 +4,7 @@ import { Activity } from 'lucide-react'
 
 export default function StravaConnectBanner() {
   return (
-    <div className="rounded-xl border border-dashed p-8 flex flex-col items-center gap-4 text-center">
+    <div className="rounded-xl border border-dashed p-4 sm:p-8 flex flex-col items-center gap-4 text-center">
       <div className="w-12 h-12 rounded-full bg-[var(--color-strava)]/10 flex items-center justify-center">
         <Activity size={24} className="text-[var(--color-strava)]" />
       </div>

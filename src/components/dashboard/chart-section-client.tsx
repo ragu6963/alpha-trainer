@@ -8,7 +8,7 @@ const ChartSection = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="min-h-[400px] animate-pulse bg-muted/30 rounded-lg" />
+      <div className="min-h-[300px] sm:min-h-[400px] animate-pulse bg-muted/30 rounded-lg" />
     ),
   }
 )
