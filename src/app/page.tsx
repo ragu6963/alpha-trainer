@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Activity, BarChart2, MessageSquare, Zap } from 'lucide-react'
+import { BarChart2, MessageSquare, Zap } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 const ERROR_MESSAGES: Record<string, string> = {
   google_denied: 'Google 인증이 취소되었습니다.',
@@ -21,7 +22,7 @@ export default async function LandingPage({
       <header className="h-16 border-b flex items-center px-4 lg:px-6">
         <div className="max-w-7xl w-full mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 font-semibold text-lg">
-            <Activity size={20} className="text-[var(--color-strava)]" />
+            <Logo size={24} />
             Alpha Trainer
           </div>
         </div>

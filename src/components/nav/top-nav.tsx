@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Settings, Activity } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LogoutButton } from './logout-button'
+import { Logo } from '@/components/logo'
 
 const navItems = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -19,7 +20,7 @@ export function TopNav() {
     <header className="sticky top-0 z-50 h-16 bg-background border-b">
       <div className="max-w-7xl mx-auto px-4 lg:px-6 h-full flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-lg">
-          <Activity size={20} className="text-[--color-strava]" />
+          <Logo size={24} />
           Alpha Trainer
         </Link>
 

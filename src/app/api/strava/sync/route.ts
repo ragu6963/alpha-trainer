@@ -83,15 +83,20 @@ export async function POST(_request: NextRequest) {
           const runs = activities.filter((a) => a.type === 'Run')
           console.log(`[sync] 페이지 ${page}: Run 타입 ${runs.length}개 (전체 ${activities.length}개 중)`)
 
-          // DB에 이미 존재하는 활동은 상세 조회를 건너뛰기
+          // DB에 이미 존재하는 활동은 상세 조회를 건너뛰기 (단, 랩이 없는 기존 활동은 재조회)
           const runIds = runs.map((r) => BigInt(r.id))
           const existingActivities = await prisma.activity.findMany({
             where: { stravaActivityId: { in: runIds }, userId: dbUser.id },
-            select: { stravaActivityId: true },
+            select: { stravaActivityId: true, _count: { select: { laps: true } } },
           })
-          const existingIds = new Set(existingActivities.map((a) => a.stravaActivityId))
-          const newRuns = runs.filter((r) => !existingIds.has(BigInt(r.id)))
-          console.log(`[sync] 페이지 ${page}: 신규 ${newRuns.length}개, 기존 ${existingIds.size}개 (스킵)`)
+          const existingWithLapsIds = new Set(
+            existingActivities
+              .filter((a) => a._count.laps > 0)
+              .map((a) => a.stravaActivityId)
+          )
+          const newRuns = runs.filter((r) => !existingWithLapsIds.has(BigInt(r.id)))
+          const skippedCount = runs.length - newRuns.length
+          console.log(`[sync] 페이지 ${page}: 처리 대상 ${newRuns.length}개, 스킵(랩 있는 기존) ${skippedCount}개`)
 
           for (const run of newRuns) {
             console.log(`[sync] 상세 조회: activity ${run.id} (${run.name})`)
@@ -138,7 +143,7 @@ export async function POST(_request: NextRequest) {
             })
 
             if (detail.laps?.length) {
-              await prisma.$transaction(
+              await Promise.all(
                 detail.laps.map((lap) =>
                   prisma.lap.upsert({
                     where: { stravaLapId: BigInt(lap.id) },
@@ -187,7 +192,6 @@ export async function POST(_request: NextRequest) {
           }
 
           // 이미 존재하는 활동 수도 진행률에 포함
-          const skippedCount = runs.length - newRuns.length
           if (skippedCount > 0) {
             syncedCount += skippedCount
             send({ type: 'progress', synced: syncedCount, total: totalRuns })
