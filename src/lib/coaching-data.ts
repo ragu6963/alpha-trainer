@@ -29,6 +29,8 @@ function formatDate(date: Date) {
   })
 }
 
+const DAY_NAMES_KO = ['일', '월', '화', '수', '목', '금', '토']
+
 export async function getCoachingData(userId: string): Promise<string> {
   const now = new Date()
   const fourWeeksAgo = new Date(now)
@@ -95,20 +97,42 @@ export async function getCoachingData(userId: string): Promise<string> {
   // 텍스트 포맷 생성
   const lines: string[] = []
 
-  lines.push('=== 러너 데이터 요약 ===')
+  // 오늘 날짜/요일 컨텍스트
+  const todayStr = now.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  })
+  lines.push(`[오늘] ${todayStr}`)
   lines.push('')
+
   lines.push('[전체 요약]')
   lines.push(`- 총 러닝 횟수: ${totalCount}회`)
   lines.push(`- 누적 거리: ${formatDistanceKm(totalSums._sum.distance ?? 0)}`)
   if (firstActivity) {
     lines.push(`- 첫 러닝: ${formatDate(firstActivity.startDate)}`)
   }
+  if (totalCount === 0) {
+    lines.push('- 아직 러닝 기록이 없습니다.')
+  }
 
   lines.push('')
   lines.push('[주간 통계 (최근 4주)]')
-  for (const w of weeklyStats) {
+  for (let i = 0; i < weeklyStats.length; i++) {
+    const w = weeklyStats[i]
+    let trendNote = ''
+    if (i === 0 && weeklyStats[1]) {
+      const prev = weeklyStats[1].totalDistanceM
+      const curr = w.totalDistanceM
+      if (prev > 0 && curr > 0) {
+        const pct = Math.round(((curr - prev) / prev) * 100)
+        if (pct > 0) trendNote = ` (지난 주 대비 +${pct}%)`
+        else if (pct < 0) trendNote = ` (지난 주 대비 ${pct}%)`
+      }
+    }
     lines.push(
-      `- ${w.weekLabel}: ${w.count}회, ${formatDistanceKm(w.totalDistanceM)}, 평균 페이스 ${formatPace(w.avgPaceMs)}`
+      `- ${w.weekLabel}: ${w.count}회, ${formatDistanceKm(w.totalDistanceM)}, 평균 페이스 ${formatPace(w.avgPaceMs)}${trendNote}`
     )
   }
 
@@ -116,19 +140,12 @@ export async function getCoachingData(userId: string): Promise<string> {
     lines.push('')
     lines.push(`[최근 활동 상세 (${recentActivities.length}개)]`)
     for (const a of recentActivities) {
-      const record = {
-        date: formatDate(a.startDate),
-        name: a.name,
-        distance: formatDistanceKm(a.distance),
-        duration: formatDuration(a.movingTime),
-        pace: formatPace(a.averageSpeed),
-        averageHeartrate: a.averageHeartrate ? Math.round(a.averageHeartrate) : null,
-        maxHeartrate: a.maxHeartrate ? Math.round(a.maxHeartrate) : null,
-        totalElevationGain: a.totalElevationGain,
-        averageCadence: a.averageCadence ? Math.round(a.averageCadence) : null,
-        calories: a.calories ? Math.round(a.calories) : null,
-      }
-      lines.push(JSON.stringify(record))
+      const dayName = DAY_NAMES_KO[a.startDate.getDay()]
+      let actLine = `- ${formatDate(a.startDate)}(${dayName}) | ${a.name} | ${formatDistanceKm(a.distance)} | ${formatDuration(a.movingTime)} | 페이스 ${formatPace(a.averageSpeed)}`
+      if (a.averageHeartrate) actLine += ` | 평균 심박 ${Math.round(a.averageHeartrate)}bpm`
+      if (a.totalElevationGain && a.totalElevationGain > 0) actLine += ` | 고도 +${a.totalElevationGain}m`
+      if (a.averageCadence) actLine += ` | 케이던스 ${Math.round(a.averageCadence)}spm`
+      lines.push(actLine)
     }
   } else {
     lines.push('')

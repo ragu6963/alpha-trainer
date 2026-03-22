@@ -130,12 +130,24 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
     setIsLoading(true)
     setError(null)
 
-    // CoreMessage 형식으로 변환
-    const apiMessages = nextMessages.map((m) =>
-      m.role === 'user'
-        ? { role: 'user' as const, content: m.text }
-        : { role: 'assistant' as const, content: m.response.text }
-    )
+    // CoreMessage 형식으로 변환 (assistant는 text + 훈련 추천 요약 포함)
+    const apiMessages = nextMessages.map((m) => {
+      if (m.role === 'user') return { role: 'user' as const, content: m.text }
+      const r = m.response
+      const parts: string[] = [r.text]
+      if (r.workout) {
+        parts.push(
+          `[추천 훈련: ${r.workout.type} ${r.workout.distanceKm}km${r.workout.paceTarget ? ` @ ${r.workout.paceTarget}` : ''} — ${r.workout.notes}]`
+        )
+      }
+      if (r.weekPlan) {
+        const summary = r.weekPlan
+          .map((d) => `${d.day}: ${d.type}${d.distanceKm != null ? ` ${d.distanceKm}km` : ''}`)
+          .join(', ')
+        parts.push(`[주간 계획: ${summary}]`)
+      }
+      return { role: 'assistant' as const, content: parts.join('\n') }
+    })
 
     try {
       const res = await fetch('/api/coach/chat', {
