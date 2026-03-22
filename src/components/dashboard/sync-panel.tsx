@@ -34,11 +34,12 @@ export default function SyncPanel({
   const [syncState, setSyncState] = useState<SyncState>({ status: 'idle' })
   const [lastSynced, setLastSynced] = useState<Date | null>(lastSyncedAt)
 
-  async function handleSync() {
+  async function handleSync(fullSync = false) {
     setSyncState({ status: 'syncing', synced: 0, total: 0 })
 
     try {
-      const res = await fetch('/api/strava/sync', { method: 'POST' })
+      const url = fullSync ? '/api/strava/sync?full=true' : '/api/strava/sync'
+      const res = await fetch(url, { method: 'POST' })
 
       if (!res.ok || !res.body) {
         const msg = '동기화 요청에 실패했습니다.'
@@ -77,7 +78,7 @@ export default function SyncPanel({
           } else if (msg.type === 'progress') {
             setSyncState((prev) =>
               prev.status === 'syncing'
-                ? { ...prev, synced: msg.synced ?? 0 }
+                ? { ...prev, synced: msg.synced ?? 0, total: msg.total ?? prev.total }
                 : prev
             )
           } else if (msg.type === 'done') {
@@ -116,9 +117,14 @@ export default function SyncPanel({
               : '아직 동기화하지 않았습니다'}
           </p>
         </div>
-        <Button onClick={handleSync} disabled={isSyncing} size="sm">
-          {isSyncing ? '동기화 중...' : '동기화'}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => handleSync(false)} disabled={isSyncing} size="sm">
+            {isSyncing ? '동기화 중...' : '동기화'}
+          </Button>
+          <Button onClick={() => handleSync(true)} disabled={isSyncing} size="sm" variant="outline">
+            {isSyncing ? '동기화 중...' : '전체 재동기화'}
+          </Button>
+        </div>
       </div>
 
       {syncState.status === 'syncing' && (

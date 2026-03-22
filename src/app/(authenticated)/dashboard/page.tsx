@@ -87,7 +87,6 @@ export default async function DashboardPage() {
       <ActivityList
         initialActivities={initialActivities}
         initialTotal={total}
-        initialTotalPages={Math.ceil(total / 10)}
       />
 
     </div>

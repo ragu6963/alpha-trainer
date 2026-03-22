@@ -32,7 +32,9 @@ export type ChartActivity = {
 export function ChartSection({ activities }: { activities: ChartActivity[] }) {
   const [period, setPeriod] = useState<'4w' | '3m' | '6m'>('4w')
 
+
   const chartData = useMemo(() => {
+
     // Determine start date based on period
     const now = new Date()
     const startDate = new Date(now)
@@ -168,6 +170,8 @@ export function ChartSection({ activities }: { activities: ChartActivity[] }) {
     return { weeklyData, monthlyData }
   }, [activities, period])
 
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -195,7 +199,7 @@ export function ChartSection({ activities }: { activities: ChartActivity[] }) {
           </CardHeader>
           <CardContent>
             <div className="h-[200px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height={200} minWidth={0}>
                 <BarChart data={chartData.weeklyData}>
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} width={30} />
@@ -219,7 +223,7 @@ export function ChartSection({ activities }: { activities: ChartActivity[] }) {
           </CardHeader>
           <CardContent>
             <div className="h-[200px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height={200} minWidth={0}>
                 <BarChart data={chartData.weeklyData}>
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} width={20} allowDecimals={false} />
@@ -245,7 +249,7 @@ export function ChartSection({ activities }: { activities: ChartActivity[] }) {
           </CardHeader>
           <CardContent>
             <div className="h-[200px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height={200} minWidth={0}>
                 <BarChart data={chartData.weeklyData}>
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} width={30} />

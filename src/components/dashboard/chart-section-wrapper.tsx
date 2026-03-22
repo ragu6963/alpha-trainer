@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { ChartSection } from './chart-section'
+import ChartSectionClient from './chart-section-client'
 
 export default async function ChartSectionWrapper({ userId }: { userId: string }) {
   const sixMonthsAgo = new Date()
@@ -44,5 +44,5 @@ export default async function ChartSectionWrapper({ userId }: { userId: string }
     maxSpeed: a.maxSpeed,
   }))
 
-  return <ChartSection activities={chartData} />
+  return <ChartSectionClient activities={chartData} />
 }

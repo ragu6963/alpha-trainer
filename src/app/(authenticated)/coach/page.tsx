@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
-import ChatInterface from '@/components/coach/chat-interface'
+import ChatContainer from '@/components/coach/chat-container'
 
 export default async function CoachPage() {
   const supabase = await createClient()
@@ -27,9 +27,8 @@ export default async function CoachPage() {
   const modelLabel = llmKey ? (modelLabels[llmKey.model] ?? llmKey.model) : ''
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">AI 코치</h1>
-      <ChatInterface hasApiKey={!!llmKey} modelLabel={modelLabel} />
+    <div className="h-full">
+      <ChatContainer hasApiKey={!!llmKey} modelLabel={modelLabel} />
     </div>
   )
 }

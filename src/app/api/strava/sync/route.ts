@@ -6,7 +6,7 @@ import { getAthleteRunCount, getActivities, getActivityDetail } from '@/lib/stra
 
 type SyncEvent =
   | { type: 'start'; total: number }
-  | { type: 'progress'; synced: number }
+  | { type: 'progress'; synced: number; total: number }
   | { type: 'done'; synced: number }
   | { type: 'error'; error: string }
 
@@ -33,6 +33,15 @@ export async function POST(_request: NextRequest) {
 
   const stravaAthleteId = dbUser.stravaAthleteId
 
+  // 전체 재동기화 요청 시 lastSyncedAt 초기화
+  const isFullSync = _request.nextUrl.searchParams.get('full') === 'true'
+  if (isFullSync) {
+    await prisma.user.update({
+      where: { id: dbUser.id },
+      data: { lastSyncedAt: null },
+    })
+  }
+
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -48,9 +57,13 @@ export async function POST(_request: NextRequest) {
         )
         send({ type: 'start', total: totalRuns })
 
-        const after = dbUser.lastSyncedAt
-          ? Math.floor(dbUser.lastSyncedAt.getTime() / 1000)
-          : undefined
+        const after = isFullSync
+          ? undefined
+          : dbUser.lastSyncedAt
+            ? Math.floor(dbUser.lastSyncedAt.getTime() / 1000)
+            : undefined
+
+        console.log(`[sync] 시작 - 전체 러닝: ${totalRuns}개, fullSync: ${isFullSync}, after: ${after ?? 'none'}`)
 
         let page = 1
         let syncedCount = 0
@@ -63,11 +76,25 @@ export async function POST(_request: NextRequest) {
             perPage: 200,
           })
 
+          console.log(`[sync] 페이지 ${page}: Strava에서 ${activities.length}개 활동 수신`)
+
           if (activities.length === 0) break
 
           const runs = activities.filter((a) => a.type === 'Run')
+          console.log(`[sync] 페이지 ${page}: Run 타입 ${runs.length}개 (전체 ${activities.length}개 중)`)
 
-          for (const run of runs) {
+          // DB에 이미 존재하는 활동은 상세 조회를 건너뛰기
+          const runIds = runs.map((r) => BigInt(r.id))
+          const existingActivities = await prisma.activity.findMany({
+            where: { stravaActivityId: { in: runIds }, userId: dbUser.id },
+            select: { stravaActivityId: true },
+          })
+          const existingIds = new Set(existingActivities.map((a) => a.stravaActivityId))
+          const newRuns = runs.filter((r) => !existingIds.has(BigInt(r.id)))
+          console.log(`[sync] 페이지 ${page}: 신규 ${newRuns.length}개, 기존 ${existingIds.size}개 (스킵)`)
+
+          for (const run of newRuns) {
+            console.log(`[sync] 상세 조회: activity ${run.id} (${run.name})`)
             const { detail } = await getActivityDetail(dbUser.id, run.id)
 
             const sharedFields = {
@@ -156,9 +183,17 @@ export async function POST(_request: NextRequest) {
             }
 
             syncedCount++
+            send({ type: 'progress', synced: syncedCount, total: totalRuns })
           }
 
-          send({ type: 'progress', synced: syncedCount })
+          // 이미 존재하는 활동 수도 진행률에 포함
+          const skippedCount = runs.length - newRuns.length
+          if (skippedCount > 0) {
+            syncedCount += skippedCount
+            send({ type: 'progress', synced: syncedCount, total: totalRuns })
+          }
+
+          console.log(`[sync] 페이지 ${page} 완료 - 누적 진행: ${syncedCount}개 (신규: ${newRuns.length}, 스킵: ${skippedCount})`)
           page++
         }
 
@@ -167,10 +202,12 @@ export async function POST(_request: NextRequest) {
           data: { lastSyncedAt: syncStartedAt },
         })
 
+        console.log(`[sync] 완료 - 총 ${syncedCount}개 처리`)
         send({ type: 'done', synced: syncedCount })
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'UNKNOWN_ERROR'
+        console.error(`[sync] 에러:`, message)
         send({ type: 'error', error: message })
       } finally {
         controller.close()

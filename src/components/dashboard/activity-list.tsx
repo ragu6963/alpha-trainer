@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Loader2 } from 'lucide-react'
 
 export type ActivityItem = {
   id: string
@@ -39,40 +39,62 @@ function formatDate(iso: string) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`
 }
 
+const PER_PAGE = 10
+
 export default function ActivityList({
   initialActivities,
   initialTotal,
-  initialTotalPages,
 }: {
   initialActivities: ActivityItem[]
   initialTotal: number
-  initialTotalPages: number
 }) {
   const [activities, setActivities] = useState(initialActivities)
+  const [total] = useState(initialTotal)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(initialTotalPages)
-  const [total, setTotal] = useState(initialTotal)
   const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(initialActivities.length < initialTotal)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  async function goToPage(nextPage: number) {
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return
     setLoading(true)
     try {
+      const nextPage = page + 1
       const res = await fetch(`/api/activities?page=${nextPage}`)
       if (!res.ok) return
-      const data = (await res.json()) as {
+      const data = await res.json() as {
         activities: ActivityItem[]
         total: number
         page: number
         totalPages: number
       }
-      setActivities(data.activities)
-      setPage(data.page)
-      setTotalPages(data.totalPages)
-      setTotal(data.total)
+      setActivities((prev) => [...prev, ...data.activities])
+      setPage(nextPage)
+      if (nextPage >= data.totalPages) {
+        setHasMore(false)
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [loading, hasMore, page])
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   if (total === 0) {
     return (
@@ -87,7 +109,9 @@ export default function ActivityList({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">최근 활동</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">
+        러닝 기록 ({total}개)
+      </h2>
 
       {/* 데스크톱: 테이블형 */}
       <div className="hidden sm:block rounded-xl border overflow-hidden">
@@ -101,7 +125,7 @@ export default function ActivityList({
               <th className="text-right px-4 py-2 font-medium text-muted-foreground">페이스</th>
             </tr>
           </thead>
-          <tbody className={loading ? 'opacity-50' : ''}>
+          <tbody>
             {activities.map((a) => (
               <tr
                 key={a.id}
@@ -123,7 +147,7 @@ export default function ActivityList({
       </div>
 
       {/* 모바일: 카드형 */}
-      <div className={`sm:hidden space-y-2 ${loading ? 'opacity-50' : ''}`}>
+      <div className="sm:hidden space-y-2">
         {activities.map((a) => (
           <Link key={a.id} href={`/activities/${a.id}`}>
             <Card className="hover:bg-muted/30 transition-colors">
@@ -145,32 +169,18 @@ export default function ActivityList({
         ))}
       </div>
 
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-muted-foreground">
-            {total}개 중 {(page - 1) * 10 + 1}–{Math.min(page * 10, total)}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(page - 1)}
-              disabled={page <= 1 || loading}
-            >
-              이전
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(page + 1)}
-              disabled={page >= totalPages || loading}
-            >
-              다음
-            </Button>
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="flex justify-center py-4">
+        {loading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            불러오는 중...
           </div>
-        </div>
-      )}
+        )}
+        {!hasMore && activities.length > PER_PAGE && (
+          <p className="text-xs text-muted-foreground">모든 기록을 불러왔습니다</p>
+        )}
+      </div>
     </div>
   )
 }

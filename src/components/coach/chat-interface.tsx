@@ -7,6 +7,8 @@ import { type CoachResponse, workoutLabels } from '@/lib/coach-response.schema'
 type Props = {
   hasApiKey: boolean
   modelLabel: string
+  conversationId: string | null
+  onConversationCreated?: (id: string) => void
 }
 
 type ChatMessage =
@@ -85,13 +87,37 @@ function AssistantBubble({ response }: { response: CoachResponse }) {
   )
 }
 
-export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
+export default function ChatInterface({ hasApiKey, modelLabel, conversationId, onConversationCreated }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [started, setStarted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Fetch messages when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      setIsLoading(true)
+      fetch(`/api/coach/conversations/${conversationId}/messages`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.messages) {
+            setMessages(data.messages)
+            setStarted(true)
+          }
+        })
+        .catch(err => {
+          console.error(err)
+          setError('메시지를 불러오는데 실패했습니다.')
+        })
+        .finally(() => setIsLoading(false))
+    } else {
+      setMessages([])
+      setStarted(false)
+      setError(null)
+    }
+  }, [conversationId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -115,7 +141,7 @@ export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
       const res = await fetch('/api/coach/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, conversationId }),
       })
 
       if (!res.ok) {
@@ -123,8 +149,23 @@ export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
         throw new Error(data.message ?? data.error ?? '오류가 발생했습니다.')
       }
 
-      const response: CoachResponse = await res.json()
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'assistant', response }])
+      const response = await res.json()
+      const newConvId = response.conversationId
+      
+      // Remove conversationId from response object so it matches schema strictly if needed,
+      // but the API returned it. We can just pass the rest as response.
+      const coachResponse: CoachResponse = {
+        text: response.text,
+        bullets: response.bullets,
+        workout: response.workout,
+        weekPlan: response.weekPlan,
+      }
+
+      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'assistant', response: coachResponse }])
+      
+      if (!conversationId && newConvId && onConversationCreated) {
+        onConversationCreated(newConvId)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
     } finally {
@@ -164,7 +205,7 @@ export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
   if (!started) {
     return (
       <div className="flex flex-col h-[calc(100dvh-8rem)]">
-        <div className="flex items-center gap-2 pb-3 border-b text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 px-4 py-3 border-b text-xs text-muted-foreground">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           {modelLabel}
         </div>
@@ -193,7 +234,7 @@ export default function ChatInterface({ hasApiKey, modelLabel }: Props) {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-8rem)]">
-      <div className="flex items-center gap-2 pb-3 border-b text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 px-4 py-3 border-b text-xs text-muted-foreground">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
         {modelLabel}
       </div>
