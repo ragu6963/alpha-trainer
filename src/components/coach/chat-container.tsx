@@ -91,7 +91,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
   )
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] border rounded-xl overflow-hidden bg-background">
+    <div className="flex h-[calc(100dvh-8rem)] rounded-xl overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col shrink-0 bg-muted/20 border-r transition-all duration-300 ease-in-out ${
@@ -99,7 +99,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
         }`}
       >
         {/* Sidebar Header */}
-        <div className={`flex items-center border-b ${isSidebarOpen ? 'p-3 justify-between gap-2' : 'p-2 flex-col gap-2'}`}>
+        <div className={`flex items-center ${isSidebarOpen ? 'p-3 justify-between gap-2' : 'p-2 flex-col gap-2'}`}>
           {isSidebarOpen ? (
             <>
               <Button onClick={handleNewChat} className="flex-1 justify-start gap-2" variant="default" size="sm">
@@ -147,7 +147,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center p-3 border-b bg-muted/20">
+        <div className="md:hidden flex items-center p-3 bg-muted/20">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger render={<Button variant="ghost" size="icon" className="mr-2" />}>
               <Menu className="w-5 h-5" />

@@ -216,8 +216,8 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
 
   if (!started) {
     return (
-      <div className="flex flex-col h-[calc(100dvh-8rem)]">
-        <div className="flex items-center gap-2 px-4 py-3 border-b text-xs text-muted-foreground">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           {modelLabel}
         </div>
@@ -245,13 +245,13 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)]">
-      <div className="flex items-center gap-2 px-4 py-3 border-b text-xs text-muted-foreground">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
         {modelLabel}
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto py-4 space-y-4 px-3">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-8">
             <p>러닝에 대해 무엇이든 물어보세요!</p>
@@ -289,7 +289,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-3 border-t">
+      <form onSubmit={handleSubmit} className="flex gap-2 pt-3 p-3">
         <input
           className="flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           placeholder="러닝에 대해 무엇이든 물어보세요..."

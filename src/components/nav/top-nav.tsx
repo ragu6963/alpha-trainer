@@ -17,7 +17,7 @@ export function TopNav() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 h-16 bg-background border-b">
+    <header className="sticky top-0 z-50 h-16 bg-background">
       <div className="max-w-7xl mx-auto px-4 lg:px-6 h-full flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-lg">
           <Logo size={24} />
