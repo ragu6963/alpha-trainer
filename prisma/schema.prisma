@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id @default(uuid())
+  supabaseId      String    @unique
+  stravaAthleteId Int       @unique
+  accessToken     String
+  refreshToken    String
+  tokenExpiresAt  DateTime
+  lastSyncedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  activities    Activity[]
+  conversations Conversation[]
+  llmKeys       UserLLMKey[]
+}
+
+model Activity {
+  id                 String   @id @default(uuid())
+  stravaActivityId   BigInt   @unique
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  distance           Float
+  movingTime         Int
+  elapsedTime        Int
+  startDate          DateTime
+  averageSpeed       Float
+  maxSpeed           Float
+  averageHeartrate   Float?
+  maxHeartrate       Float?
+  totalElevationGain Float
+  elevHigh           Float?
+  elevLow            Float?
+  startLatlng        Json?
+  endLatlng          Json?
+  createdAt          DateTime @default(now())
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  createdAt      DateTime     @default(now())
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+model UserLLMKey {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     LLMProvider
+  model        String
+  vaultSecretId String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, provider])
+}
+
+enum LLMProvider {
+  gemini
+  openai
+  anthropic
+}

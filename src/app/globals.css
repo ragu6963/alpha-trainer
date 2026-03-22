@@ -4,10 +4,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  /* 러닝 데이터 시각화 */
+  --color-pace: oklch(0.65 0.15 145);
+  --color-distance: oklch(0.60 0.15 250);
+  --color-heartrate: oklch(0.65 0.20 25);
+  --color-elevation: oklch(0.65 0.10 75);
+  --color-time: oklch(0.60 0.15 290);
+
+  /* 상태 */
+  --color-success: oklch(0.70 0.15 150);
+  --color-warning: oklch(0.75 0.15 85);
+  --color-info: oklch(0.70 0.12 240);
+
+  /* Strava 브랜드 */
+  --color-strava: #fc4c02;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-pretendard);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
