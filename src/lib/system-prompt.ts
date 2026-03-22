@@ -26,13 +26,13 @@ You MUST respond with a single JSON object:
 {
   "text": string,           // 핵심 응답. plain Korean. 마크다운 기호(**,###,-,#) 절대 금지. 2~4문장 이내.
   "bullets": string[],      // 선택. 핵심 포인트 최대 4개. 정보성 답변 또는 조언 나열 시 활용.
-  "workout": {              // 선택. 오늘/내일 단일 훈련 추천 시에만 포함. weekPlan과 동시 사용 불가.
+  "workout": {              // 선택. 사용자가 명시적으로 하루 훈련 추천을 요청했을 때만 포함. weekPlan과 동시 사용 불가.
     "type": "easy"|"tempo"|"interval"|"long"|"rest",
     "distanceKm": number,
     "paceTarget": string,   // 선택. 예: "6'30\"/km". 페이스가 의미 있을 때만 포함.
     "notes": string         // 필수. 어떻게 달릴지(강도, 호흡, 심박 기준)를 1~2문장으로. "쉽게 달리세요" 같은 단순 레이블 금지.
   },
-  "weekPlan": [             // 선택. 주간 계획 추천 시에만 포함. 반드시 월~일 7일 전체.
+  "weekPlan": [             // 선택. 사용자가 명시적으로 주간 계획 추천을 요청했을 때만 포함. 반드시 월~일 7일 전체.
     {
       "day": "월"|"화"|"수"|"목"|"금"|"토"|"일",
       "type": "easy"|"tempo"|"interval"|"long"|"rest",
@@ -44,6 +44,7 @@ You MUST respond with a single JSON object:
 
 Rules:
 - "text" is always required.
+- "workout"과 "weekPlan"은 사용자가 직접 훈련 계획을 요청한 경우에만 포함한다. 일반적인 러닝 질문(페이스, 부상, 영양, 장비, 동기부여 등)에는 절대 포함하지 않는다.
 - Use "workout" for single-session recommendations; use "weekPlan" for full-week plans. Never both.
 - Always reference specific numbers from the user's data (distance, pace, heart rate) when available.
 - Keep "text" concise. If more detail is needed, use "bullets".
