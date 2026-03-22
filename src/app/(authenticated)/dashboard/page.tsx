@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import SyncPanel from '@/components/dashboard/sync-panel'
 import StatsCards from '@/components/dashboard/stats-cards'
 import ActivityList, { type ActivityItem } from '@/components/dashboard/activity-list'
+import StravaConnectBanner from '@/components/dashboard/strava-connect-banner'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -14,9 +15,19 @@ export default async function DashboardPage() {
 
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: user.id },
-    select: { id: true, lastSyncedAt: true },
+    select: { id: true, stravaAthleteId: true, lastSyncedAt: true },
   })
   if (!dbUser) redirect('/')
+
+  // Strava 미연결 시 연동 안내
+  if (!dbUser.stravaAthleteId) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">대시보드</h1>
+        <StravaConnectBanner />
+      </div>
+    )
+  }
 
   // 이번 주 월요일 00:00:00
   const now = new Date()

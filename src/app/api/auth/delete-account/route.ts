@@ -25,14 +25,16 @@ export async function DELETE() {
       `
     }
 
-    // 2. Strava OAuth 연동 해제
-    try {
-      await fetch('https://www.strava.com/oauth/deauthorize', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${dbUser.accessToken}` },
-      })
-    } catch {
-      // Strava 연동 해제 실패는 무시하고 계속 진행
+    // 2. Strava OAuth 연동 해제 (연결된 경우에만)
+    if (dbUser.accessToken) {
+      try {
+        await fetch('https://www.strava.com/oauth/deauthorize', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${dbUser.accessToken}` },
+        })
+      } catch {
+        // Strava 연동 해제 실패는 무시하고 계속 진행
+      }
     }
 
     // 3. DB 사용자 삭제 (Cascade로 Activity, Conversation, Message, UserLLMKey 함께 삭제)

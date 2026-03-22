@@ -23,10 +23,14 @@ export async function POST(_request: NextRequest) {
 
   const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } })
   if (!dbUser) {
-    return new Response(JSON.stringify({ error: 'USER_NOT_FOUND' }), {
-      status: 404,
-    })
+    return new Response(JSON.stringify({ error: 'USER_NOT_FOUND' }), { status: 404 })
   }
+
+  if (!dbUser.stravaAthleteId) {
+    return new Response(JSON.stringify({ error: 'STRAVA_NOT_CONNECTED' }), { status: 400 })
+  }
+
+  const stravaAthleteId = dbUser.stravaAthleteId
 
   const encoder = new TextEncoder()
 
@@ -39,7 +43,7 @@ export async function POST(_request: NextRequest) {
       try {
         const totalRuns = await getAthleteRunCount(
           dbUser.id,
-          dbUser.stravaAthleteId
+          stravaAthleteId
         )
         send({ type: 'start', total: totalRuns })
 

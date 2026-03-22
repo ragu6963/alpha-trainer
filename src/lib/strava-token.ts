@@ -5,10 +5,21 @@ const TOKEN_REFRESH_BUFFER_SECONDS = 300 // 만료 5분 전 갱신
 
 export async function getValidStravaToken(userId: string): Promise<string> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
-  return refreshIfNeeded(user)
+
+  if (!user.accessToken || !user.refreshToken || !user.tokenExpiresAt) {
+    throw new Error('STRAVA_NOT_CONNECTED')
+  }
+
+  return refreshIfNeeded(user as UserModel & {
+    accessToken: string
+    refreshToken: string
+    tokenExpiresAt: Date
+  })
 }
 
-async function refreshIfNeeded(user: UserModel): Promise<string> {
+async function refreshIfNeeded(
+  user: UserModel & { accessToken: string; refreshToken: string; tokenExpiresAt: Date }
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   const expiresAt = Math.floor(user.tokenExpiresAt.getTime() / 1000)
 

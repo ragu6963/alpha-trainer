@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
+import { createClient } from '@/lib/supabase/server'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
 
 export async function GET() {
+  // 로그인된 사용자만 Strava 연결 가능
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.redirect(`${APP_URL}/?error=not_logged_in`)
+  }
+
   const state = randomBytes(16).toString('hex')
 
   const cookieStore = await cookies()

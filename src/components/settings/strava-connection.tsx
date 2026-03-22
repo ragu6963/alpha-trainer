@@ -16,11 +16,7 @@ export default function StravaConnection({ athleteId, tokenExpiresAt }: Props) {
   const isTokenValid = new Date(tokenExpiresAt) > new Date()
 
   async function handleDisconnect() {
-    if (
-      !confirm(
-        'Strava 연결을 해제하시겠습니까?\n로그아웃되며, 재연결하려면 다시 Strava로 로그인해야 합니다.'
-      )
-    )
+    if (!confirm('Strava 연결을 해제하시겠습니까?\n연결 해제 후에도 계정은 유지됩니다.'))
       return
 
     setDisconnecting(true)

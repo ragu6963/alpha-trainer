@@ -1,5 +1,3 @@
-Loaded Prisma config from prisma.config.ts.
-
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -13,10 +11,10 @@ CREATE TYPE "LLMProvider" AS ENUM ('gemini', 'openai', 'anthropic');
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "supabaseId" TEXT NOT NULL,
-    "stravaAthleteId" INTEGER NOT NULL,
-    "accessToken" TEXT NOT NULL,
-    "refreshToken" TEXT NOT NULL,
-    "tokenExpiresAt" TIMESTAMP(3) NOT NULL,
+    "stravaAthleteId" INTEGER,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "tokenExpiresAt" TIMESTAMP(3),
     "lastSyncedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -107,4 +105,3 @@ ALTER TABLE "Message" ADD CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "UserLLMKey" ADD CONSTRAINT "UserLLMKey_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

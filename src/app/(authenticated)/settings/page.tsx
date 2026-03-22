@@ -44,10 +44,26 @@ export default async function SettingsPage() {
       {/* Strava 연동 */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Strava 연동</h2>
-        <StravaConnection
-          athleteId={dbUser.stravaAthleteId}
-          tokenExpiresAt={dbUser.tokenExpiresAt.toISOString()}
-        />
+        {dbUser.stravaAthleteId && dbUser.tokenExpiresAt ? (
+          <StravaConnection
+            athleteId={dbUser.stravaAthleteId}
+            tokenExpiresAt={dbUser.tokenExpiresAt.toISOString()}
+          />
+        ) : (
+          <div className="rounded-lg border p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">Strava 계정이 연결되어 있지 않습니다.</p>
+            <a
+              href="/api/auth/strava"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--color-strava)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+              </svg>
+              Strava 연결하기
+            </a>
+          </div>
+        )}
       </section>
 
       {/* AI 설정 */}
