@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ChatInterface from './chat-interface'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -12,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Menu, Plus, MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu, Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutDashboard, Settings } from 'lucide-react'
 
 type Conversation = { id: string; title: string; updatedAt: string }
 
@@ -91,7 +92,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
   )
 
   return (
-    <div className="flex h-full rounded-xl overflow-hidden bg-background md:h-[calc(100dvh-8rem)]">
+    <div className="flex h-full bg-background md:rounded-xl md:overflow-hidden md:h-[calc(100dvh-8rem)]">
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col shrink-0 bg-muted/20 border-r transition-all duration-300 ease-in-out ${
@@ -147,9 +148,10 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center p-3 border-b bg-background/95 backdrop-blur-sm shrink-0">
+        <div className="md:hidden flex items-center justify-between px-2 border-b bg-background/95 backdrop-blur-sm shrink-0 h-12">
+          {/* 대화 목록 메뉴 */}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger render={<Button variant="ghost" size="icon" className="mr-2" />}>
+            <SheetTrigger render={<Button variant="ghost" size="icon" />}>
               <Menu className="w-5 h-5" />
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
@@ -167,7 +169,23 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
               </div>
             </SheetContent>
           </Sheet>
-          <span className="font-medium text-sm">AI 코치</span>
+
+          {/* 중앙 타이틀 */}
+          <span className="font-medium text-sm absolute left-1/2 -translate-x-1/2">AI 코치</span>
+
+          {/* 우측 페이지 이동 버튼 */}
+          <div className="flex items-center gap-1">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" aria-label="대시보드">
+                <LayoutDashboard className="w-5 h-5" />
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button variant="ghost" size="icon" aria-label="설정">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden min-h-0">

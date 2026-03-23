@@ -82,16 +82,16 @@ function ToolCallBadge({ toolCalls }: { toolCalls: ToolCall[] }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="mb-2">
+    <div className="mb-2 max-w-[80%]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-full border border-border bg-background/80 px-2.5 py-1"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
         </svg>
-        <span>도구 사용 {toolCalls.length}회</span>
-        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <span>도구 {toolCalls.length}회 사용</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3 h-3 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
@@ -100,15 +100,20 @@ function ToolCallBadge({ toolCalls }: { toolCalls: ToolCall[] }) {
         <div className="mt-1.5 space-y-1.5">
           {toolCalls.map((tc, i) => (
             <div key={i} className="rounded-lg border border-border bg-background/80 px-2.5 py-2 text-xs">
-              <span className="font-medium text-foreground">
-                {TOOL_LABELS[tc.toolName] ?? tc.toolName}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                </svg>
+                <span className="font-medium text-foreground">
+                  {TOOL_LABELS[tc.toolName] ?? tc.toolName}
+                </span>
+              </div>
               {Object.keys(tc.args).length > 0 && (
-                <div className="mt-1 space-y-0.5">
+                <div className="mt-1.5 space-y-0.5 pl-4.5">
                   {Object.entries(tc.args).map(([k, v]) => (
-                    <div key={k} className="flex gap-1.5 text-muted-foreground">
-                      <code className="shrink-0">{k}:</code>
-                      <code>{String(v)}</code>
+                    <div key={k} className="flex gap-1.5 text-muted-foreground flex-wrap">
+                      <code className="shrink-0 text-muted-foreground/70">{k}:</code>
+                      <code className="break-all">{String(v)}</code>
                     </div>
                   ))}
                 </div>
