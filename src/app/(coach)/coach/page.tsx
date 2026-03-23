@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
-import ChatContainer from '@/components/coach/chat-container'
+import CoachWorkspace from '@/components/coach/coach-workspace'
 
 export default async function CoachPage() {
   const supabase = await createClient()
@@ -28,7 +28,7 @@ export default async function CoachPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <ChatContainer hasApiKey={!!llmKey} modelLabel={modelLabel} />
+      <CoachWorkspace hasApiKey={!!llmKey} modelLabel={modelLabel} />
     </div>
   )
 }
