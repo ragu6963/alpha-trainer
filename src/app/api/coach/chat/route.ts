@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const toolCalls = result.steps.flatMap((step) =>
       step.toolCalls.map((tc) => ({
         toolName: tc.toolName,
-        args: tc.args as Record<string, unknown>,
+        args: tc.input as Record<string, unknown>,
       }))
     )
 
