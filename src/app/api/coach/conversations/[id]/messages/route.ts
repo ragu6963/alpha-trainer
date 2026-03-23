@@ -51,10 +51,12 @@ export async function GET(
         } catch (e) {
           responseObj = { text: m.content } // fallback
         }
+        const { toolCalls, ...response } = responseObj ?? {}
         return {
           id: m.id,
           role: 'assistant',
-          response: responseObj,
+          response,
+          ...(toolCalls ? { toolCalls } : {}),
         }
       }
     })

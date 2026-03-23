@@ -81,6 +81,14 @@ export async function POST(request: NextRequest) {
     // 마지막 사용자 메시지
     const lastUserMsg = messages[messages.length - 1]
 
+    // tool 사용 정보 추출
+    const toolCalls = result.steps.flatMap((step) =>
+      step.toolCalls.map((tc) => ({
+        toolName: tc.toolName,
+        args: tc.input as Record<string, unknown>,
+      }))
+    )
+
     // 메시지 DB 저장 (병렬 처리)
     await Promise.all([
       prisma.message.create({
@@ -94,18 +102,10 @@ export async function POST(request: NextRequest) {
         data: {
           conversationId: currentConversationId,
           role: 'assistant',
-          content: JSON.stringify(result.output),
+          content: JSON.stringify({ ...result.output, toolCalls: toolCalls.length > 0 ? toolCalls : undefined }),
         },
       }),
     ])
-
-    // tool 사용 정보 추출
-    const toolCalls = result.steps.flatMap((step) =>
-      step.toolCalls.map((tc) => ({
-        toolName: tc.toolName,
-        args: tc.input as Record<string, unknown>,
-      }))
-    )
 
     return Response.json({
       ...result.output,

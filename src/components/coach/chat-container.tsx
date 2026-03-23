@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Menu, Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutDashboard, Settings } from 'lucide-react'
+import { Menu, Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutDashboard, Settings, Trash2 } from 'lucide-react'
 
 type Conversation = { id: string; title: string; updatedAt: string }
 
@@ -49,19 +49,36 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
     setIsMobileMenuOpen(false)
   }
 
+  const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    await fetch(`/api/coach/conversations/${id}`, { method: 'DELETE' })
+    if (currentId === id) router.push('/coach')
+    fetchConversations()
+  }
+
   const renderSidebarContent = () => (
     <ScrollArea className="flex-1">
       <div className="space-y-1 p-3">
         {conversations.map(c => (
-          <Button
-            key={c.id}
-            onClick={() => handleSelectChat(c.id)}
-            variant={c.id === currentId ? "secondary" : "ghost"}
-            className={`w-full justify-start font-normal ${c.id === currentId ? 'bg-muted shadow-sm' : ''}`}
-          >
-            <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-50" />
-            <span className="truncate">{c.title || '새 대화'}</span>
-          </Button>
+          <div key={c.id} className="group relative flex items-center">
+            <Button
+              onClick={() => handleSelectChat(c.id)}
+              variant={c.id === currentId ? "secondary" : "ghost"}
+              className={`w-full justify-start font-normal pr-8 ${c.id === currentId ? 'bg-muted shadow-sm' : ''}`}
+            >
+              <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-50" />
+              <span className="truncate">{c.title || '새 대화'}</span>
+            </Button>
+            <Button
+              onClick={(e) => handleDeleteConversation(e, c.id)}
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-muted-foreground hover:text-destructive"
+              aria-label="대화 삭제"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         ))}
       </div>
     </ScrollArea>
