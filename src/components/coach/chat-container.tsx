@@ -91,7 +91,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
   )
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] rounded-xl overflow-hidden bg-background">
+    <div className="flex h-full rounded-xl overflow-hidden bg-background md:h-[calc(100dvh-8rem)]">
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col shrink-0 bg-muted/20 border-r transition-all duration-300 ease-in-out ${
@@ -147,7 +147,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center p-3 bg-muted/20">
+        <div className="md:hidden flex items-center p-3 border-b bg-background/95 backdrop-blur-sm shrink-0">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger render={<Button variant="ghost" size="icon" className="mr-2" />}>
               <Menu className="w-5 h-5" />
@@ -169,11 +169,11 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
           </Sheet>
           <span className="font-medium text-sm">AI 코치</span>
         </div>
-        
-        <div className="flex-1 overflow-hidden">
-          <ChatInterface 
-            hasApiKey={hasApiKey} 
-            modelLabel={modelLabel} 
+
+        <div className="flex-1 overflow-hidden min-h-0">
+          <ChatInterface
+            hasApiKey={hasApiKey}
+            modelLabel={modelLabel}
             conversationId={currentId}
             onConversationCreated={(id) => {
               router.push(`/coach?c=${id}`, { scroll: false })
@@ -188,7 +188,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
 
 export default function ChatContainer({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLabel: string }) {
   return (
-    <Suspense fallback={<div className="h-[calc(100dvh-8rem)] flex items-center justify-center">로딩 중...</div>}>
+    <Suspense fallback={<div className="h-full flex items-center justify-center">로딩 중...</div>}>
       <ChatWorkspace hasApiKey={hasApiKey} modelLabel={modelLabel} />
     </Suspense>
   )

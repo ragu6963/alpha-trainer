@@ -229,7 +229,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
             <p className="text-lg font-medium">안녕하세요! 러닝 코치입니다.</p>
             <p className="text-muted-foreground text-sm mt-1">오늘 무엇을 도와드릴까요?</p>
           </div>
-          <div className="flex flex-col gap-3 w-full max-w-sm">
+          <div className="flex flex-col gap-3 w-full max-w-sm px-4">
             {QUICK_ACTIONS.map((action) => (
               <button
                 key={action.label}
@@ -292,7 +292,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-3 p-3">
+      <form onSubmit={handleSubmit} className="flex gap-2 p-3 shrink-0 border-t">
         <input
           className="flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           placeholder="러닝에 대해 무엇이든 물어보세요..."

@@ -27,7 +27,7 @@ export default async function CoachPage() {
   const modelLabel = llmKey ? (modelLabels[llmKey.model] ?? llmKey.model) : ''
 
   return (
-    <div className="h-full">
+    <div className="h-full flex flex-col">
       <ChatContainer hasApiKey={!!llmKey} modelLabel={modelLabel} />
     </div>
   )
