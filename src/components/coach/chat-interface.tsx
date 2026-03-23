@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { type CoachResponse, workoutLabels } from '@/lib/coach-response.schema'
+import ToolInfoPanel from './tool-info-panel'
 
 type Props = {
   hasApiKey: boolean
@@ -221,6 +222,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           {modelLabel}
         </div>
+        <ToolInfoPanel />
         <div className="flex flex-col items-center justify-center flex-1 gap-6 py-8">
           <div className="text-center">
             <p className="text-2xl mb-2">👟</p>
@@ -250,6 +252,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
         {modelLabel}
       </div>
+      <ToolInfoPanel />
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-3">
         {messages.length === 0 && (
