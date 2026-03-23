@@ -156,10 +156,17 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  // 방금 생성된 대화 ID: onConversationCreated로 URL이 바뀌어도 메시지를 API에서 재조회하지 않음
+  const justCreatedId = useRef<string | null>(null)
 
   // Fetch messages when conversationId changes
   useEffect(() => {
     if (conversationId) {
+      // 방금 생성한 대화는 이미 클라이언트에 메시지가 있으므로 재조회 불필요
+      if (justCreatedId.current === conversationId) {
+        justCreatedId.current = null
+        return
+      }
       setIsLoading(true)
       fetch(`/api/coach/conversations/${conversationId}/messages`)
         .then(res => res.json())
@@ -246,6 +253,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
       ])
       
       if (!conversationId && newConvId && onConversationCreated) {
+        justCreatedId.current = newConvId
         onConversationCreated(newConvId)
       }
     } catch (e) {

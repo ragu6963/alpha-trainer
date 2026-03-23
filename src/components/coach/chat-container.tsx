@@ -92,7 +92,7 @@ function ChatWorkspace({ hasApiKey, modelLabel }: { hasApiKey: boolean; modelLab
   )
 
   return (
-    <div className="flex h-full bg-background md:rounded-xl md:overflow-hidden md:h-[calc(100dvh-8rem)]">
+    <div className="flex h-full bg-background md:rounded-xl md:overflow-hidden">
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col shrink-0 bg-muted/20 border-r transition-all duration-300 ease-in-out ${
