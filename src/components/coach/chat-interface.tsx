@@ -12,9 +12,11 @@ type Props = {
   onConversationCreated?: (id: string) => void
 }
 
+type ToolCall = { toolName: string; args: Record<string, unknown> }
+
 type ChatMessage =
   | { id: string; role: 'user'; text: string }
-  | { id: string; role: 'assistant'; response: CoachResponse }
+  | { id: string; role: 'assistant'; response: CoachResponse; toolCalls?: ToolCall[] }
 
 const QUICK_ACTIONS = [
   {
@@ -68,9 +70,62 @@ function WeekPlanTable({ weekPlan }: { weekPlan: NonNullable<CoachResponse['week
   )
 }
 
-function AssistantBubble({ response }: { response: CoachResponse }) {
+const TOOL_LABELS: Record<string, string> = {
+  getRecentActivities: '최근 활동 조회',
+  getActivityStats: '기간별 통계',
+  getPersonalBests: '개인 최고 기록',
+  getActivityDetail: '활동 상세 조회',
+  searchActivities: '활동 검색',
+}
+
+function ToolCallBadge({ toolCalls }: { toolCalls: ToolCall[] }) {
+  const [open, setOpen] = useState(false)
+
   return (
-    <div className="max-w-[80%] rounded-2xl rounded-bl-sm px-4 py-3 bg-muted text-base leading-relaxed space-y-1">
+    <div className="mb-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        <span>도구 사용 {toolCalls.length}회</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="mt-1.5 space-y-1.5">
+          {toolCalls.map((tc, i) => (
+            <div key={i} className="rounded-lg border border-border bg-background/80 px-2.5 py-2 text-xs">
+              <span className="font-medium text-foreground">
+                {TOOL_LABELS[tc.toolName] ?? tc.toolName}
+              </span>
+              {Object.keys(tc.args).length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {Object.entries(tc.args).map(([k, v]) => (
+                    <div key={k} className="flex gap-1.5 text-muted-foreground">
+                      <code className="shrink-0">{k}:</code>
+                      <code>{String(v)}</code>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AssistantBubble({ response, toolCalls }: { response: CoachResponse; toolCalls?: ToolCall[] }) {
+  return (
+    <div className="max-w-[80%] space-y-1">
+      {toolCalls && toolCalls.length > 0 && <ToolCallBadge toolCalls={toolCalls} />}
+      <div className="rounded-2xl rounded-bl-sm px-4 py-3 bg-muted text-base leading-relaxed space-y-1">
       <p>{response.text}</p>
       {response.bullets && response.bullets.length > 0 && (
         <ul className="mt-2 space-y-1">
@@ -84,6 +139,7 @@ function AssistantBubble({ response }: { response: CoachResponse }) {
       )}
       {response.workout && <WorkoutCard workout={response.workout} />}
       {response.weekPlan && <WeekPlanTable weekPlan={response.weekPlan} />}
+      </div>
     </div>
   )
 }
@@ -174,7 +230,15 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         weekPlan: response.weekPlan,
       }
 
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'assistant', response: coachResponse }])
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          response: coachResponse,
+          toolCalls: response.toolCalls,
+        },
+      ])
       
       if (!conversationId && newConvId && onConversationCreated) {
         onConversationCreated(newConvId)
@@ -268,7 +332,7 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
                 <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
             ) : (
-              <AssistantBubble response={m.response} />
+              <AssistantBubble response={m.response} toolCalls={m.toolCalls} />
             )}
           </div>
         ))}

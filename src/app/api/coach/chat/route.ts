@@ -99,9 +99,18 @@ export async function POST(request: NextRequest) {
       }),
     ])
 
+    // tool 사용 정보 추출
+    const toolCalls = result.steps.flatMap((step) =>
+      step.toolCalls.map((tc) => ({
+        toolName: tc.toolName,
+        args: tc.args as Record<string, unknown>,
+      }))
+    )
+
     return Response.json({
       ...result.output,
       conversationId: currentConversationId,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     })
   } catch (error) {
     console.error('generateText error:', error)
