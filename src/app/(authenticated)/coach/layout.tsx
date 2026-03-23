@@ -11,7 +11,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
   return (
     // 모바일: 부모 레이아웃 패딩 상쇄 후 전체 높이 확보 (BottomNav 없으므로 -mb-6)
     // 데스크톱(lg): 부모 레이아웃이 그대로 처리하므로 원복
-    <div className="-mx-4 -mt-6 -mb-20 lg:mx-0 lg:mt-0 lg:mb-0 flex flex-col h-[calc(100dvh)] lg:h-full">
+    <div className="-mx-4 -mt-6 -mb-20 lg:mx-0 lg:mt-0 lg:mb-0 flex flex-col h-[calc(100dvh)] lg:h-full lg:min-h-0 lg:flex-1">
       {children}
     </div>
   )

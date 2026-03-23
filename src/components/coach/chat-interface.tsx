@@ -324,14 +324,14 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
         {modelLabel}
       </div>
       <ToolInfoPanel />
 
-      <div className="flex-1 overflow-y-auto py-4 space-y-4 px-3">
+      <div className="flex-1 overflow-y-auto py-4 space-y-4 px-3 pb-24">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-8">
             <p>러닝에 대해 무엇이든 물어보세요!</p>
@@ -369,31 +369,33 @@ export default function ChatInterface({ hasApiKey, modelLabel, conversationId, o
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 p-3 shrink-0 border-t">
-        <input
-          className="flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-          placeholder="러닝에 대해 무엇이든 물어보세요..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={isLoading}
-          autoComplete="off"
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-          className="inline-flex items-center justify-center rounded-full w-11 h-11 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
-          aria-label="전송"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-4 h-4"
+      <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none">
+        <form onSubmit={handleSubmit} className="flex gap-2 items-center rounded-2xl border border-input bg-background shadow-lg px-3 py-2 pointer-events-auto">
+          <input
+            className="flex-1 bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+            placeholder="러닝에 대해 무엇이든 물어보세요..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={isLoading}
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="inline-flex items-center justify-center rounded-full w-9 h-9 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+            aria-label="전송"
           >
-            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-          </svg>
-        </button>
-      </form>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4"
+            >
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

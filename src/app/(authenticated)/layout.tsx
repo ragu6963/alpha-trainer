@@ -10,7 +10,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       </div>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-6 py-6 pb-20 lg:pb-6">
+      <main className="flex-1 flex flex-col min-h-0 max-w-7xl w-full mx-auto px-4 lg:px-6 py-6 pb-20 lg:pb-6">
         {children}
       </main>
 
