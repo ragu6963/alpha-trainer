@@ -375,6 +375,39 @@
 - [ ] AI 코치 대화 시 목표 정보 시스템 프롬프트에 포함
 - [ ] 대시보드에 목표 대비 진행률 표시
 
+### 8-5. AI Tool Use — 동적 러닝 데이터 조회
+
+**목표**: LLM이 사용자 질문 맥락에 따라 필요한 데이터를 직접 선택·조회하도록 한다.
+현재 고정된 4주/20회 쿼리 대신, LLM이 Tool을 호출해 원하는 범위·필터의 데이터를 가져온다.
+
+**설계 원칙**
+- Raw SQL 실행 금지: LLM이 SQL 문자열을 생성하지 않는다. 허용된 Prisma 함수만 호출한다.
+- Tool 파라미터는 서버에서 검증 후 Prisma 쿼리로 변환한다 (SQL Injection 차단).
+- `maxSteps`를 제한해 무한 루프·과도한 DB 호출을 방지한다 (권장: 3).
+- 기존 `getCoachingData()` 고정 데이터는 유지 — Tool 미지원 모델 fallback 용도.
+
+**Tool 목록 (`lib/coaching-tools.ts`)**
+
+| Tool 이름 | 설명 | 주요 파라미터 |
+|---|---|---|
+| `getRecentActivities` | 최근 N회 또는 기간별 활동 목록 | `limit`, `days`, `orderBy` |
+| `getActivityStats` | 기간별 집계 (거리·횟수·평균 페이스) | `periodDays`, `groupBy: week\|month` |
+| `getPersonalBests` | 거리별 최고 기록 | `distanceKm` (5·10·21·42) |
+| `getActivityDetail` | 특정 활동 상세 + 랩 데이터 | `activityId` |
+| `searchActivities` | 키워드·날짜 범위 검색 | `keyword`, `startDate`, `endDate` |
+
+**구현 파일**
+- `lib/coaching-tools.ts` — Zod 스키마 + Prisma 쿼리 함수 모음 (AI SDK `tool()` 형식)
+- `app/api/coach/chat/route.ts` — `generateText`에 `tools`, `maxSteps: 3` 추가
+
+**완료 기준**
+- [ ] `lib/coaching-tools.ts` 생성: 5개 Tool 정의 및 Prisma 쿼리 구현
+- [ ] `chat/route.ts`: `tools` 파라미터 연동, `maxSteps: 3` 설정
+- [ ] "3개월 전 페이스 알려줘" 질문에 LLM이 적절한 Tool을 호출해 응답하는지 확인
+- [ ] Tool 파라미터 검증 실패 시 에러 응답 확인
+
+---
+
 ### 완료 기준 (마일스톤)
 - [ ] 3개 LLM 프로바이더 모두 동작 확인
 - [ ] Webhook으로 새 활동 자동 동기화 동작

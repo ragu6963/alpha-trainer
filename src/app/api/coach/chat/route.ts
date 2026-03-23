@@ -1,11 +1,12 @@
 import { type NextRequest } from 'next/server'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, Output } from 'ai'
+import { generateText, Output, stepCountIs } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { getCoachingData } from '@/lib/coaching-data'
 import { buildSystemPrompt } from '@/lib/system-prompt'
 import { coachResponseSchema } from '@/lib/coach-response.schema'
+import { buildCoachingTools } from '@/lib/coaching-tools'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest) {
       output: Output.object({ schema: coachResponseSchema }),
       system: systemPrompt,
       messages,
+      tools: buildCoachingTools(dbUser.id),
+      stopWhen: stepCountIs(3),
     })
 
     let currentConversationId = conversationId
