@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const workoutTypeSchema = z.enum(['easy', 'tempo', 'interval', 'long', 'rest'])
+export const workoutTypeSchema = z.enum(['easy', 'tempo', 'interval', 'long', 'lsd', 'rest'])
 
 export const coachResponseSchema = z.object({
   text: z
@@ -33,6 +33,7 @@ export const coachResponseSchema = z.object({
         day: z.enum(['월', '화', '수', '목', '금', '토', '일']),
         type: workoutTypeSchema,
         distanceKm: z.number().optional(),
+        paceTarget: z.string().optional().describe('목표 페이스. 예: "6\'30\\"" '),
         notes: z
           .string()
           .optional()
@@ -51,5 +52,6 @@ export const workoutLabels: Record<z.infer<typeof workoutTypeSchema>, string> = 
   tempo: '템포런',
   interval: '인터벌',
   long: '장거리',
+  lsd: 'LSD런',
   rest: '휴식',
 }

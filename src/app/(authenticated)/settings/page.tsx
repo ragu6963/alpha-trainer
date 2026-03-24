@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import LLMKeyForm from '@/components/settings/llm-key-form'
 import StravaConnection from '@/components/settings/strava-connection'
 import DeleteAccountDialog from '@/components/settings/delete-account-dialog'
+import GoalForm from '@/components/settings/goal-form'
+import RunnerProfileForm from '@/components/settings/runner-profile-form'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -12,7 +14,10 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/')
 
-  const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } })
+  const dbUser = await prisma.user.findUnique({
+    where: { supabaseId: user.id },
+    include: { goal: true },
+  })
   if (!dbUser) redirect('/')
 
   // 등록된 LLM 키 목록 조회 (마스킹)
@@ -40,6 +45,45 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-10 max-w-2xl">
       <h1 className="text-2xl font-bold">설정</h1>
+
+
+      {/* 훈련 목표 */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">훈련 목표</h2>
+        <p className="text-sm text-muted-foreground">
+          AI 코치가 목표를 기반으로 맞춤 코칭을 제공합니다.
+        </p>
+        <GoalForm
+          savedGoal={
+            dbUser.goal
+              ? {
+                  goalType: dbUser.goal.goalType,
+                  targetRaceDate: dbUser.goal.targetRaceDate?.toISOString() ?? null,
+                  targetRaceName: dbUser.goal.targetRaceName,
+                  targetDistanceKm: dbUser.goal.targetDistanceKm,
+                  targetFinishTime: dbUser.goal.targetFinishTime,
+                  weeklyDistanceGoalKm: dbUser.goal.weeklyDistanceGoalKm,
+                  weeklyRunCountGoal: dbUser.goal.weeklyRunCountGoal,
+                  memo: dbUser.goal.memo,
+                }
+              : null
+          }
+        />
+      </section>
+
+      {/* 러너 프로필 */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">러너 프로필</h2>
+        <p className="text-sm text-muted-foreground">
+          심박수 기반 코칭의 정확도를 높이기 위한 신체 정보입니다.
+        </p>
+        <RunnerProfileForm
+          profile={{
+            birthYear: dbUser.birthYear,
+            measuredMaxHR: dbUser.measuredMaxHR,
+          }}
+        />
+      </section>
 
       {/* Strava 연동 */}
       <section className="space-y-4">
@@ -82,7 +126,6 @@ export default async function SettingsPage() {
         </p>
         <LLMKeyForm savedKeys={maskedKeys} />
       </section>
-
       {/* 위험 영역 */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-destructive">위험 영역</h2>
@@ -96,6 +139,7 @@ export default async function SettingsPage() {
           <DeleteAccountDialog />
         </div>
       </section>
+
     </div>
   )
 }

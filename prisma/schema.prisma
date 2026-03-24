@@ -15,12 +15,15 @@ model User {
   refreshToken    String?
   tokenExpiresAt  DateTime?
   lastSyncedAt    DateTime?
+  birthYear       Int?
+  measuredMaxHR   Int?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   activities    Activity[]
   conversations Conversation[]
   llmKeys       UserLLMKey[]
+  goal          UserGoal?
 }
 
 model Activity {
@@ -118,4 +121,27 @@ enum LLMProvider {
   gemini
   openai
   anthropic
+}
+
+enum GoalType {
+  race_completion
+  pace_improvement
+  distance_increase
+  frequency
+}
+
+model UserGoal {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalType             GoalType
+  targetRaceDate       DateTime?
+  targetRaceName       String?
+  targetDistanceKm     Float?
+  targetFinishTime     String?
+  weeklyDistanceGoalKm Float?
+  weeklyRunCountGoal   Int?
+  memo                 String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

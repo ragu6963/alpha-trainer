@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       messages,
       tools: buildCoachingTools(dbUser.id),
-      stopWhen: stepCountIs(3),
+      stopWhen: stepCountIs(5),
     })
 
     let currentConversationId = conversationId

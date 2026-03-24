@@ -346,16 +346,220 @@
 
 ---
 
-## Step 8: 확장 [P2]
+## Step 8: AI 코칭 고도화 [P1]
 
-### 8-1. Strava Webhook 자동 동기화
+### 8-0. 설계 원칙
+
+**스냅샷 vs 도구 역할 구분**
+
+스냅샷과 도구의 역할 경계를 명확히 하지 않으면 AI가 도구를 중복 호출하거나 반대로 필요한 도구를 호출하지 않는 문제가 발생한다.
+
+| 기준 | 스냅샷 포함 | 도구로만 접근 |
+|------|------------|--------------|
+| 매 요청마다 필요 | O | X |
+| 데이터 크기 | 소형·고정 | 가변·대형 |
+| 예시 | 최근 4주 통계, 목표, 오늘 날짜, PB 요약 | 특정 활동 랩 데이터, 날짜 범위 검색, 장기 통계 |
+
+- 스냅샷에 포함된 항목은 `system-prompt.ts` "When NOT to call tools"에 명시하여 중복 호출 방지
+- PB 요약처럼 스냅샷과 도구가 겹치는 경우, 스냅샷 값은 "초기 컨텍스트용 요약"임을 명시하고 도구 호출은 스냅샷 범위 밖(특정 거리 PB 질의 등)에서만 허용
+
+**데이터 부족 처리 원칙**
+
+- 도구가 "데이터 부족"을 반환하면 AI는 ① 해당 지표를 언급하지 않거나 ② 부족 이유를 간략히 설명 후 대안 조언으로 전환한다
+- `system-prompt.ts` "Handling Insufficient Data" 섹션에 도구 반환값 처리 가이드 추가 필요
+
+---
+
+### 8-1. 스키마 불일치 수정 (버그)
+
+`system-prompt.ts`에서 페이스 계산 및 workout/weekPlan 설명에 `lsd` 타입을 명시하지만,
+`coach-response.schema.ts`의 Zod enum에 `lsd`가 누락되어 있음. AI가 `lsd`를 반환하면 파싱 에러 발생.
+
+> **구조적 위험**: `system-prompt.ts`의 JSON Schema 예시와 `coach-response.schema.ts`의 Zod 스키마가 별도 파일로 분리되어 수동으로 동기화해야 하는 구조. 이번 `lsd` 누락이 그 결과물이며 향후 스키마 변경 시 반복될 수 있음. `zod-to-json-schema` 도입을 중장기적으로 검토 권장.
+
+- [x] `lib/coach-response.schema.ts`: `workoutTypeSchema`에 `lsd` 추가
+  ```ts
+  z.enum(['easy', 'tempo', 'interval', 'long', 'lsd', 'rest'])
+  ```
+- [x] `workoutLabels`에 `lsd: 'LSD런'` 추가
+- [x] `weekPlan` 배열 항목에 `paceTarget: z.string().optional()` 추가 (현재 `workout`에만 있음)
+- [x] `system-prompt.ts`의 weekPlan 스키마 예시도 동기화
+- [x] `system-prompt.ts` "Pace calculation" 섹션에서 `lsd`와 `long` 경계 명확화
+  - `lsd`: 최근 avg pace +90~120초/km, **거리 ≥ 15km 또는 최근 최장 활동의 1.5배 이상**일 때 사용
+  - `long`: 최근 avg pace +60~90초/km, lsd 거리 기준 미달 장거리
+  - 두 타입 모두 느린 페이스라 AI가 혼용하기 쉬움. 거리 기준을 명시해야 혼용 방지 가능
+
+### 8-2. 코칭 데이터 스냅샷 강화
+
+`lib/coaching-data.ts` 조회 결과에 아래 항목 추가 — AI가 도구 없이도 더 구체적인 코칭 가능.
+
+> **토큰 예산**: 현재 스냅샷(최대 20개 활동 + 4주 통계)에 아래 항목을 모두 추가하면 토큰 소비 약 30~50% 증가 예상. 항목별 우선순위를 고려해 단계적으로 추가 권장.
+
+- [x] **10% 규칙 자동 계산**: ~~이번 주 vs 지난 주~~ → **지난 7일 vs 그 이전 7일** 롤링 기준 사용
+  > 월요일 기준 "이번 주"를 쓰면 주 초반엔 항상 "안전 범위"로 표시되어 실용성 없음. 롤링 7일 기준이 요일 무관하게 일관된 결과를 제공함.
+  ```
+  [10% 규칙 체크] (최근 7일 vs 이전 7일)
+  - 이전 7일: 32.00km / 최근 7일: 28.50km → 89% (안전 범위)
+  ```
+- [x] **4주 페이스 추세**: 4주 전 avg pace vs 이번 주 avg pace 비교, **주당 활동 2회 미만이면 제외**
+  > 활동이 1회뿐인 주는 표본이 너무 작아 추세 계산 신뢰도가 낮음. 제외된 경우 "데이터 부족" 표기.
+  ```
+  [페이스 추세] 4주 전 6'45"/km (3회) → 이번 주 6'20"/km (4회) (+25초 향상)
+  ```
+- [x] **개인 기록 요약**: 5km·10km·하프·풀 PB 중 **기록이 존재하는 거리만** 포함 (최대 3개)
+  > `getPersonalBests()` 도구와 데이터 중복. 스냅샷 PB는 초기 컨텍스트용으로만 사용하고, system-prompt "When NOT to call tools"에 "PB 요약이 스냅샷에 있으면 `getPersonalBests` 호출 불필요" 규칙 추가 필요.
+  ```
+  [개인 기록]
+  - 5km: 28'15" (2025-09-14)
+  - 10km: 58'40" (2025-11-03)
+  ```
+- [x] **최근 훈련 강도 분포**: 최근 10개 활동 중 hard vs easy 비율, **분류 우선순위**:
+  1. 심박 데이터 있는 경우: 최대 심박의 76% 이상이면 hard, 미만이면 easy (Zone 3 경계 기준)
+  2. 심박 없는 경우: 최근 4주 avg pace 대비 **5% 이상** 빠르면 hard (고정 15초 대신 상대 기준)
+  > 고정 임계값(15초/km)은 사용자 수준과 무관하게 적용되어 빠른 러너에게 기준이 너무 낮아짐. LSD처럼 의도적으로 느리게 달린 활동도 easy로 잘못 분류되므로 심박수 우선 분류가 더 정확함.
+  - 분류 기준을 스냅샷 텍스트에 명시하여 AI가 기준을 알 수 있도록 함
+  ```
+  [훈련 강도 분포 (최근 10회, HR 기반)] hard: 3회 / easy: 7회
+  ```
+
+### 8-3. 유저 목표 시스템
+
+AI 코치가 목표 기반 코칭(레이스 준비, 페이스 단축, 완주 등)을 제공할 수 있도록 목표 정보를 시스템 프롬프트에 포함.
+
+**DB 변경**
+
+> **현재 상태 (블로커)**: `prisma/schema.prisma`에 `UserGoal` 모델이 없고 `User` 모델에 relation도 없음. 마이그레이션(`20260323120726_add_user_goal`)은 DB에 적용됐으나 Prisma Client가 `UserGoal`을 인식하지 못하는 블로킹 상태. 또한 해당 마이그레이션에 `targetDistanceKm`, `targetPacePerKm`, `weeklyRunCountGoal` 컬럼이 누락되어 있어 보완 마이그레이션이 필요함.
+
+> **단일 목표 설계**: `userId @unique`로 사용자당 목표를 1개로 제한. 여러 목표를 동시에 추구하는 시나리오(예: "하프 완주 + 주 3회 달리기")는 현재 스코프 밖. 향후 다중 목표 지원 시 `@unique` 제거 후 별도 `status` 필드로 활성 목표 관리.
+
+- [x] `prisma/schema.prisma`에 `GoalType` enum 추가 (String 대신 enum으로 DB 레벨 validation)
+  ```prisma
+  enum GoalType {
+    race_completion
+    pace_improvement
+    distance_increase
+    frequency
+  }
+  ```
+- [x] `prisma/schema.prisma`에 `UserGoal` 모델 추가 및 `User` 모델에 `goal UserGoal?` relation 추가:
+  ```prisma
+  model UserGoal {
+    id                   String    @id @default(cuid())
+    userId               String    @unique
+    user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    goalType             GoalType
+    targetRaceDate       DateTime?
+    targetRaceName       String?
+    targetDistanceKm     Float?    // 목표 레이스 거리 (e.g. 하프=21.1, 풀=42.195)
+    targetPacePerKm      String?   // 목표 페이스 (e.g. "5:30")
+    weeklyDistanceGoalKm Float?
+    weeklyRunCountGoal   Int?      // frequency 목표용
+    memo                 String?
+    createdAt            DateTime  @default(now())
+    updatedAt            DateTime  @updatedAt
+  }
+  ```
+- [x] 보완 마이그레이션 실행: `npx prisma migrate dev --name add_user_goal_complete_and_profile`
+  > 기존 마이그레이션에 누락된 컬럼(`targetDistanceKm`, `targetPacePerKm`, `weeklyRunCountGoal`)과 `goalType` enum 전환 포함
+
+**설정 UI**
+- [x] `/settings` 페이지에 "훈련 목표" 섹션 추가
+  - 목표 유형 선택 (완주 / 페이스 단축 / 거리 늘리기 / 빈도 증가)
+  - 목표 레이스명·날짜·거리 입력 (선택)
+  - 목표 페이스 입력 (선택, pace_improvement 시)
+  - 주간 목표 거리 / 주간 목표 횟수 입력 (선택)
+  - 자유 메모 입력
+
+**코칭 데이터 연동**
+- [x] `lib/coaching-data.ts`: UserGoal 조회 후 스냅샷에 포함
+  > D-day 계산 시 타임존 주의: DB는 UTC 저장이므로 한국 시간(KST = UTC+9) 기준으로 계산해야 날짜 경계에서 1일 오차를 방지할 수 있음.
+  ```
+  [훈련 목표]
+  - 목표: 하프마라톤 완주 (서울 하프마라톤, 21.1km)
+  - 목표 레이스: 2026-05-10 (D-48)
+  - 목표 페이스: 5:30/km
+  - 주간 목표 거리: 35km
+  ```
+- [x] `system-prompt.ts`: 목표 존재 시 코칭 원칙 추가 및 기존 원칙과의 충돌 해소
+  - "목표 레이스까지 남은 기간을 고려한 훈련 강도 조절" 추가
+  - **레이스 3주 이내**: progressive overload 원칙보다 테이퍼(거리 감소) 우선 — 충돌 시 테이퍼가 이김
+  - **레이스 4주 이상**: progressive overload 유지하되 목표 페이스 기반 훈련 구성
+  > 이 원칙 없이 목표만 추가하면 레이스 직전에도 "10% 규칙으로 거리를 늘리세요"라는 잘못된 코칭이 나올 수 있음.
+
+**API**
+- [x] `app/api/settings/goal/route.ts` (GET / PUT / DELETE)
+
+### 8-4. 새 코칭 도구 추가
+
+`lib/coaching-tools.ts`에 2개 도구 추가.
+
+**`getTrainingLoad()`**
+
+> **ACWR 계산 한계**: 정확한 ATL/CTL은 EWMA(지수 가중 이동 평균) 기반이지만, 단순 평균으로 구현하면 훈련이 특정 날에 몰렸을 때 수치가 왜곡될 수 있음. 단순 평균 방식을 유지하되 "참고 지표이며 의학적 진단이 아님"을 system-prompt에 명시해야 함. "> 1.5 부상 위험" 표현도 "과부하 주의"로 완화.
+
+> **`getActivityStats`와 기능 중복**: `getActivityStats(periodDays=7, groupBy='total')`이 사실상 acute 로드와 유사한 데이터를 반환함. system-prompt에서 "ACWR 판단이 필요하면 `getTrainingLoad`, 단순 통계 확인은 `getActivityStats`" 구분을 명시하지 않으면 AI가 어느 도구를 써야 할지 혼동할 수 있음.
+
+- 최근 7일 누적 거리 (acute) / 최근 28일 평균 주간 거리 (chronic) 계산
+- ACWR 해석 기준: `< 0.8` 언더트레이닝 / `0.8–1.3` 적정 / `1.3–1.5` 주의 / `> 1.5` 과부하 ("부상 위험" 표현 지양)
+- 활동 기록이 28일 미만인 경우 chronic 구간을 보유 기간으로 축소하여 계산, 7일 미만이면 "데이터 부족" 반환
+- [x] 도구 구현
+- [x] `system-prompt.ts` "Available tools" 섹션에 추가 (getActivityStats와 용도 구분 명시)
+- [x] system-prompt에 ACWR "참고 지표" 안내 문구 추가
+
+**`getHRZoneAnalysis(days?)`**
+
+> **최대 심박수 입력 경로 없음**: `User` 모델에 `birthYear`도 `measuredMaxHR`도 없어 `220 - 나이` 추정도 불가. 항상 기본값 180bpm을 쓰게 되며 개인차(±15bpm)로 인해 Zone 경계가 상당히 부정확해짐. 8-5에서 설정 UI와 스키마를 함께 추가해야 이 도구가 실용적으로 동작함.
+
+- 최근 N일 활동의 평균 심박수 분포 분석
+- 최대 심박수 기준 Zone 1~5 경계 계산 후 각 존에 해당하는 활동 비율 반환
+- "80/20 규칙" (유산소 80% / 무산소 20%) 준수 여부 판별 포함
+- 심박 데이터가 있는 활동이 3개 미만이면 "데이터 부족" 반환
+- [x] 도구 구현 (최대 심박수 우선순위: `measuredMaxHR` > `220 - 나이` 추정 > 기본값 180bpm; 추정·기본값 사용 시 응답에 명시)
+- [x] `system-prompt.ts` "Available tools" 섹션에 추가
+
+**도구 호출 제한 재검토**
+- [x] 도구 7개로 증가 후 "Maximum 3 tool steps" 제한 → 5회로 상향
+  > 현재 제한은 도구 5개 기준에서 설정됨. 복합 질문(예: "훈련 부하랑 심박 분포 같이 봐줘")에서 3회가 부족할 수 있음. 4~5회로 상향 또는 자주 함께 쓰이는 도구를 묶는 설계 검토.
+
+### 8-5. 사용자 프로필 확장
+
+> 8-4 `getHRZoneAnalysis` 및 향후 코칭 고도화의 공통 병목. 현재 `User` 모델에 코칭용 신체 정보가 전혀 없어 심박 기반 기능 전체가 기본값에 의존하는 상태.
+
+- [x] `prisma/schema.prisma` `User` 모델에 선택적 프로필 필드 추가:
+  ```prisma
+  birthYear     Int?  // 나이 추정용, getHRZoneAnalysis 220-나이 계산에 사용
+  measuredMaxHR Int?  // 직접 측정한 최대 심박수, 추정식보다 우선 적용
+  ```
+- [x] `/settings` 페이지에 "러너 프로필" 섹션 추가 (출생연도·최대 심박수 입력)
+- [x] `lib/coaching-data.ts` 스냅샷에 프로필 포함 (값이 있는 경우만)
+  ```
+  [러너 프로필]
+  - 최대 심박수: 185bpm (직접 측정)
+  ```
+- [x] `npx prisma migrate dev --name add_user_goal_complete_and_profile` (8-3과 통합)
+
+### 완료 기준
+- [x] `lsd` 타입 스키마 불일치 해소 (8-1)
+- [ ] `lsd`/`long` 경계 명시 후 주간 계획에서 두 타입이 혼용되지 않음 확인 (8-1) — 실제 AI 응답으로 검증 필요
+- [x] 스냅샷에 10% 규칙(7일 롤링)·페이스 추세·PB 요약·강도 분포 포함 (8-2)
+- [ ] 목표 설정 후 AI 코치가 D-day 기반 훈련 강도 언급하는지 확인 (8-3) — 실제 AI 응답으로 검증 필요
+- [ ] 레이스 3주 전 시나리오에서 AI가 테이퍼를 권장하는지 확인 (8-3) — 실제 AI 응답으로 검증 필요
+- [x] `getTrainingLoad` 구현 완료 (8-4)
+- [x] `getHRZoneAnalysis` 구현 완료 (8-4)
+- [x] `measuredMaxHR` 입력 UI 및 도구 연동 구현 완료 (8-5)
+
+---
+
+## Step 9: 확장 [P2]
+
+### 9-1. Strava Webhook 자동 동기화
 - [ ] Strava Webhook subscription 등록
 - [ ] `app/api/strava/webhook/route.ts` (POST / GET)
   - GET: Webhook 검증 (`hub.challenge` 응답)
   - POST: `activity.create` 이벤트 수신 → 해당 활동 자동 수집
 - [ ] Webhook 수신 시 해당 사용자의 새 활동 자동 DB 저장
 
-### 8-2. 추가 LLM 프로바이더 지원
+### 9-2. 추가 LLM 프로바이더 지원
 - [ ] `@ai-sdk/openai` 패키지 추가 → OpenAI 프로바이더 구현
 - [ ] `@ai-sdk/anthropic` 패키지 추가 → Claude 프로바이더 구현
 - [ ] 설정 UI에서 프로바이더 탭 추가 (Gemini / OpenAI / Claude)
@@ -364,47 +568,10 @@
   - Claude: `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-opus-4-6`
 - [ ] 채팅 API에서 활성 프로바이더에 따라 모델 동적 선택
 
-### 8-3. 실사용자 피드백 수집
+### 9-3. 실사용자 피드백 수집
 - [ ] 간단한 피드백 폼 또는 채널 안내
 - [ ] 사용 패턴 분석 (어떤 기능을 많이 쓰는지)
 - [ ] 피드백 기반 우선순위 조정
-
-### 8-4. 목표 설정 기능
-- [ ] 목표 유형: 거리 (10km 완주), 페이스 (5km 30분), 빈도 (주 3회)
-- [ ] 목표 기한 설정 (선택)
-- [ ] AI 코치 대화 시 목표 정보 시스템 프롬프트에 포함
-- [ ] 대시보드에 목표 대비 진행률 표시
-
-### 8-5. AI Tool Use — 동적 러닝 데이터 조회
-
-**목표**: LLM이 사용자 질문 맥락에 따라 필요한 데이터를 직접 선택·조회하도록 한다.
-현재 고정된 4주/20회 쿼리 대신, LLM이 Tool을 호출해 원하는 범위·필터의 데이터를 가져온다.
-
-**설계 원칙**
-- Raw SQL 실행 금지: LLM이 SQL 문자열을 생성하지 않는다. 허용된 Prisma 함수만 호출한다.
-- Tool 파라미터는 서버에서 검증 후 Prisma 쿼리로 변환한다 (SQL Injection 차단).
-- `maxSteps`를 제한해 무한 루프·과도한 DB 호출을 방지한다 (권장: 3).
-- 기존 `getCoachingData()` 고정 데이터는 유지 — Tool 미지원 모델 fallback 용도.
-
-**Tool 목록 (`lib/coaching-tools.ts`)**
-
-| Tool 이름 | 설명 | 주요 파라미터 |
-|---|---|---|
-| `getRecentActivities` | 최근 N회 또는 기간별 활동 목록 | `limit`, `days`, `orderBy` |
-| `getActivityStats` | 기간별 집계 (거리·횟수·평균 페이스) | `periodDays`, `groupBy: week\|month` |
-| `getPersonalBests` | 거리별 최고 기록 | `distanceKm` (5·10·21·42) |
-| `getActivityDetail` | 특정 활동 상세 + 랩 데이터 | `activityId` |
-| `searchActivities` | 키워드·날짜 범위 검색 | `keyword`, `startDate`, `endDate` |
-
-**구현 파일**
-- `lib/coaching-tools.ts` — Zod 스키마 + Prisma 쿼리 함수 모음 (AI SDK `tool()` 형식)
-- `app/api/coach/chat/route.ts` — `generateText`에 `tools`, `maxSteps: 3` 추가
-
-**완료 기준**
-- [ ] `lib/coaching-tools.ts` 생성: 5개 Tool 정의 및 Prisma 쿼리 구현
-- [ ] `chat/route.ts`: `tools` 파라미터 연동, `maxSteps: 3` 설정
-- [ ] "3개월 전 페이스 알려줘" 질문에 LLM이 적절한 Tool을 호출해 응답하는지 확인
-- [ ] Tool 파라미터 검증 실패 시 에러 응답 확인
 
 ---
 
@@ -412,3 +579,22 @@
 - [ ] 3개 LLM 프로바이더 모두 동작 확인
 - [ ] Webhook으로 새 활동 자동 동기화 동작
 - [ ] 실사용자 확보 및 점진적 성장
+
+---
+
+## Step 99: 장기 백로그
+
+> 현재 로드맵에서 우선순위가 낮거나 방향이 확정되지 않은 항목.
+
+### 99-1. (구 8-4) 목표 설정 기능 — 대시보드 진행률 표시
+- [ ] 대시보드에 목표 대비 진행률 위젯 표시 (Step 8-3 목표 시스템 완료 후 진행)
+
+### 99-2. (구 8-5) AI Tool Use 설계 문서
+> 현재 `lib/coaching-tools.ts` 및 `chat/route.ts`로 이미 구현 완료.
+> 아래는 원래 설계 의도 기록용으로 보존.
+
+**설계 원칙**
+- Raw SQL 실행 금지: LLM이 SQL 문자열을 생성하지 않는다. 허용된 Prisma 함수만 호출한다.
+- Tool 파라미터는 서버에서 검증 후 Prisma 쿼리로 변환한다 (SQL Injection 차단).
+- `maxSteps`를 제한해 무한 루프·과도한 DB 호출을 방지한다 (권장: 3).
+- 기존 `getCoachingData()` 고정 데이터는 유지 — Tool 미지원 모델 fallback 용도.

@@ -306,6 +306,161 @@ export function buildCoachingTools(userId: string) {
       },
     }),
 
+    getTrainingLoad: tool({
+      description:
+        'ACWR(급성:만성 훈련 부하 비율)을 계산합니다. "훈련 부하가 적정한지", "과훈련 위험이 있는지" 판단할 때 사용하세요. 단순 통계 확인은 getActivityStats를 사용하세요.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        const now = new Date()
+
+        const since28 = new Date(now)
+        since28.setDate(now.getDate() - 28)
+        const since7 = new Date(now)
+        since7.setDate(now.getDate() - 7)
+
+        const [all28, recent7] = await Promise.all([
+          prisma.activity.findMany({
+            where: { userId, startDate: { gte: since28 } },
+            select: { distance: true, startDate: true },
+            orderBy: { startDate: 'asc' },
+          }),
+          prisma.activity.aggregate({
+            where: { userId, startDate: { gte: since7 } },
+            _sum: { distance: true },
+          }),
+        ])
+
+        const acuteKm = (recent7._sum.distance ?? 0) / 1000
+
+        if (all28.length === 0 || acuteKm === 0) {
+          return { result: '데이터 부족: 최근 7일간 활동이 없습니다.' }
+        }
+
+        // chronic: 보유 기간만큼 축소 (최소 7일, 최대 28일)
+        const oldestDate = all28[0].startDate
+        const daysAvailable = Math.round((now.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysAvailable < 7) {
+          return { result: '데이터 부족: 7일 미만의 기록으로는 계산할 수 없습니다.' }
+        }
+
+        const chronicWeeks = Math.min(daysAvailable, 28) / 7
+        const totalKm = all28.reduce((s, a) => s + a.distance, 0) / 1000
+        const chronicKmPerWeek = totalKm / chronicWeeks
+
+        let acwr: number | null = null
+        let interpretation = ''
+        if (chronicKmPerWeek > 0) {
+          acwr = Math.round((acuteKm / chronicKmPerWeek) * 100) / 100
+          if (acwr < 0.8) interpretation = '언더트레이닝 (훈련량 부족)'
+          else if (acwr <= 1.3) interpretation = '적정 범위'
+          else if (acwr <= 1.5) interpretation = '주의 (과부하 위험 증가)'
+          else interpretation = '과부하 (부상 주의)'
+        }
+
+        return {
+          note: '참고 지표이며 의학적 진단이 아닙니다.',
+          acute7dKm: `${acuteKm.toFixed(2)}km`,
+          chronicWeeklyKm: `${chronicKmPerWeek.toFixed(2)}km`,
+          chronicBasisDays: Math.min(daysAvailable, 28),
+          acwr,
+          interpretation,
+        }
+      },
+    }),
+
+    getHRZoneAnalysis: tool({
+      description:
+        '최근 N일 활동의 심박수 구역 분포를 분석합니다. "80/20 훈련 규칙을 지키고 있는지", "심박수 존별 분포"를 확인할 때 사용하세요.',
+      inputSchema: z.object({
+        days: z
+          .number()
+          .int()
+          .min(7)
+          .max(90)
+          .optional()
+          .describe('분석 기간 (일, 기본 28일)'),
+      }),
+      execute: async ({ days = 28 }) => {
+        const since = new Date()
+        since.setDate(since.getDate() - days)
+
+        // 유저 프로필 조회 (최대 심박수)
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { measuredMaxHR: true, birthYear: true },
+        })
+
+        const activities = await prisma.activity.findMany({
+          where: { userId, startDate: { gte: since }, averageHeartrate: { not: null } },
+          select: { averageHeartrate: true, maxHeartrate: true, distance: true, startDate: true },
+          orderBy: { startDate: 'desc' },
+        })
+
+        if (activities.length < 3) {
+          return {
+            result: '데이터 부족: 심박 데이터가 있는 활동이 3개 미만입니다.',
+          }
+        }
+
+        // 최대 심박수 결정
+        let maxHR: number
+        let maxHRSource: string
+        if (dbUser?.measuredMaxHR) {
+          maxHR = dbUser.measuredMaxHR
+          maxHRSource = '직접 측정값'
+        } else if (dbUser?.birthYear) {
+          const age = new Date().getFullYear() - dbUser.birthYear
+          maxHR = 220 - age
+          maxHRSource = `220-나이 추정 (${age}세)`
+        } else {
+          maxHR = 180
+          maxHRSource = '기본값 (측정 권장)'
+        }
+
+        // Zone 경계 (% of max HR)
+        const zones = [
+          { name: 'Zone 1 (회복)', min: 0, max: 0.6 },
+          { name: 'Zone 2 (유산소)', min: 0.6, max: 0.7 },
+          { name: 'Zone 3 (템포)', min: 0.7, max: 0.8 },
+          { name: 'Zone 4 (역치)', min: 0.8, max: 0.9 },
+          { name: 'Zone 5 (최대)', min: 0.9, max: 1.0 },
+        ]
+
+        const zoneCounts = zones.map(() => 0)
+        for (const a of activities) {
+          if (!a.averageHeartrate) continue
+          const ratio = a.averageHeartrate / maxHR
+          for (let i = zones.length - 1; i >= 0; i--) {
+            if (ratio >= zones[i].min) {
+              zoneCounts[i]++
+              break
+            }
+          }
+        }
+
+        const total = activities.length
+        const zoneDistribution = zones.map((z, i) => ({
+          zone: z.name,
+          count: zoneCounts[i],
+          percent: `${Math.round((zoneCounts[i] / total) * 100)}%`,
+        }))
+
+        // 80/20 판단: Zone 1+2가 80% 이상이면 준수
+        const aerobicCount = zoneCounts[0] + zoneCounts[1]
+        const aerobicPct = Math.round((aerobicCount / total) * 100)
+        const rule8020 = aerobicPct >= 80 ? '준수 (유산소 80% 이상)' : `미달 (유산소 ${aerobicPct}%, 80% 목표)`
+
+        return {
+          period: `최근 ${days}일`,
+          activitiesWithHR: total,
+          maxHR,
+          maxHRSource,
+          zoneDistribution,
+          rule8020,
+        }
+      },
+    }),
+
     searchActivities: tool({
       description: '활동명 키워드 또는 날짜 범위로 러닝 기록을 검색합니다.',
       inputSchema: z.object({
