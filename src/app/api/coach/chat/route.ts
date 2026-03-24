@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { getCoachingData } from '@/lib/coaching-data'
 import { buildSystemPrompt } from '@/lib/system-prompt'
-import { coachResponseSchema } from '@/lib/coach-response.schema'
+import { coachResponseSchema, type CoachResponse } from '@/lib/coach-response.schema'
 import { buildCoachingTools } from '@/lib/coaching-tools'
 
 export async function POST(request: NextRequest) {
@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
       stopWhen: stepCountIs(5),
     })
 
+    // result.output throws AI_NoOutputGeneratedError when tools consume all steps
+    // without producing a final structured response — fall back to last step text.
+    let output: CoachResponse
+    try {
+      output = result.output
+    } catch {
+      const fallbackText =
+        result.steps[result.steps.length - 1]?.text ||
+        '죄송합니다. 응답을 생성하는 중 문제가 발생했습니다.'
+      output = { text: fallbackText }
+    }
+
     let currentConversationId = conversationId
     if (!currentConversationId) {
       // 대화 생성
@@ -102,13 +114,13 @@ export async function POST(request: NextRequest) {
         data: {
           conversationId: currentConversationId,
           role: 'assistant',
-          content: JSON.stringify({ ...result.output, toolCalls: toolCalls.length > 0 ? toolCalls : undefined }),
+          content: JSON.stringify({ ...output, toolCalls: toolCalls.length > 0 ? toolCalls : undefined }),
         },
       }),
     ])
 
     return Response.json({
-      ...result.output,
+      ...output,
       conversationId: currentConversationId,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     })

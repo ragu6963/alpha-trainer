@@ -149,12 +149,57 @@ function AssistantBubble({ response, toolCalls }: { response: CoachResponse; too
   )
 }
 
+function ContextModal({ onClose }: { onClose: () => void }) {
+  const [context, setContext] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/coach/context')
+      .then((res) => res.json())
+      .then((data) => setContext(data.context ?? '데이터를 불러오지 못했습니다.'))
+      .catch(() => setContext('오류가 발생했습니다.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <span className="text-sm font-medium">AI에게 전달된 훈련 데이터</span>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1"
+          aria-label="닫기"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+            </span>
+          </div>
+        ) : (
+          <pre className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed font-mono">{context}</pre>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function ChatPanel({ hasApiKey, modelLabel, conversationId, onConversationCreated }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [started, setStarted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [contextOpen, setContextOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const justCreatedId = useRef<string | null>(null)
 
@@ -286,9 +331,24 @@ export function ChatPanel({ hasApiKey, modelLabel, conversationId, onConversatio
     <div className="shrink-0">
       <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground border-b">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-        {modelLabel}
+        <span className="flex-1">{modelLabel}</span>
+        <button
+          onClick={() => setContextOpen(true)}
+          className="flex items-center gap-1 hover:text-foreground transition-colors"
+          title="AI에게 전달된 훈련 데이터 보기"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span>컨텍스트</span>
+        </button>
       </div>
       <ToolInfoPanel />
+      {contextOpen && <ContextModal onClose={() => setContextOpen(false)} />}
     </div>
   )
 

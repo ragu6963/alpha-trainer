@@ -212,10 +212,11 @@ export async function getCoachingData(userId: string): Promise<string> {
     day: 'numeric',
     weekday: 'long',
   })
-  lines.push(`[오늘] ${todayStr}`)
+  lines.push(`## 오늘`)
+  lines.push(todayStr)
   lines.push('')
 
-  lines.push('[전체 요약]')
+  lines.push('## 전체 요약')
   lines.push(`- 총 러닝 횟수: ${totalCount}회`)
   lines.push(`- 누적 거리: ${formatDistanceKm(totalSums._sum.distance ?? 0)}`)
   if (firstActivity) {
@@ -226,7 +227,7 @@ export async function getCoachingData(userId: string): Promise<string> {
   }
 
   lines.push('')
-  lines.push('[주간 통계 (최근 4주)]')
+  lines.push('## 주간 통계 (최근 4주)')
   for (let i = 0; i < weeklyStats.length; i++) {
     const w = weeklyStats[i]
     let trendNote = ''
@@ -246,36 +247,32 @@ export async function getCoachingData(userId: string): Promise<string> {
 
   // 10% 규칙
   lines.push('')
+  lines.push('## 10% 규칙 체크 (최근 7일 vs 이전 7일)')
   if (prev7km > 0) {
     const pct = Math.round((recent7km / prev7km) * 100)
     const status = pct <= 110 ? '안전 범위' : pct <= 130 ? '주의' : '과부하'
-    lines.push(
-      `[10% 규칙 체크] (최근 7일 vs 이전 7일)\n- 이전 7일: ${prev7km.toFixed(2)}km / 최근 7일: ${recent7km.toFixed(2)}km → ${pct}% (${status})`
-    )
+    lines.push(`- 이전 7일: ${prev7km.toFixed(2)}km / 최근 7일: ${recent7km.toFixed(2)}km → ${pct}% (${status})`)
   } else {
-    lines.push(
-      `[10% 규칙 체크] (최근 7일 vs 이전 7일)\n- 이전 7일: ${prev7km.toFixed(2)}km / 최근 7일: ${recent7km.toFixed(2)}km → 이전 기록 없음`
-    )
+    lines.push(`- 이전 7일: ${prev7km.toFixed(2)}km / 최근 7일: ${recent7km.toFixed(2)}km → 이전 기록 없음`)
   }
 
   // 4주 페이스 추세
   lines.push('')
+  lines.push('## 페이스 추세')
   if (week0.count >= 2 && week3.count >= 2 && week0.avgPaceMs > 0 && week3.avgPaceMs > 0) {
     const pace0Sec = 1000 / week0.avgPaceMs
     const pace3Sec = 1000 / week3.avgPaceMs
     const diffSec = Math.round(pace3Sec - pace0Sec)
     const direction = diffSec > 0 ? `+${diffSec}초 향상` : diffSec < 0 ? `${Math.abs(diffSec)}초 저하` : '동일'
-    lines.push(
-      `[페이스 추세] 4주 전 ${formatPace(week3.avgPaceMs)} (${week3.count}회) → 이번 주 ${formatPace(week0.avgPaceMs)} (${week0.count}회) (${direction})`
-    )
+    lines.push(`4주 전 ${formatPace(week3.avgPaceMs)} (${week3.count}회) → 이번 주 ${formatPace(week0.avgPaceMs)} (${week0.count}회) (${direction})`)
   } else {
-    lines.push('[페이스 추세] 데이터 부족 (각 주 최소 2회 이상 필요)')
+    lines.push('데이터 부족 (각 주 최소 2회 이상 필요)')
   }
 
   // 개인 기록
   if (pbResults.length > 0) {
     lines.push('')
-    lines.push('[개인 기록]')
+    lines.push('## 개인 기록')
     for (const pb of pbResults) {
       lines.push(`- ${pb.label}: ${pb.pace}/km 페이스 (${pb.date})`)
     }
@@ -284,14 +281,13 @@ export async function getCoachingData(userId: string): Promise<string> {
   // 훈련 강도 분포
   if (last10.length > 0 && (hardCount + easyCount) > 0) {
     lines.push('')
-    lines.push(
-      `[훈련 강도 분포 (최근 ${last10.length}회, ${intensityBasis})] hard: ${hardCount}회 / easy: ${easyCount}회`
-    )
+    lines.push(`## 훈련 강도 분포 (최근 ${last10.length}회, ${intensityBasis})`)
+    lines.push(`- hard: ${hardCount}회 / easy: ${easyCount}회`)
   }
 
   if (recentActivities.length > 0) {
     lines.push('')
-    lines.push(`[최근 활동 상세 (${recentActivities.length}개)]`)
+    lines.push(`## 최근 활동 상세 (${recentActivities.length}개)`)
     for (const a of recentActivities) {
       const dayName = DAY_NAMES_KO[a.startDate.getDay()]
       let actLine = `- ${formatDate(a.startDate)}(${dayName}) | ${a.name} | ${formatDistanceKm(a.distance)} | ${formatDuration(a.movingTime)} | 페이스 ${formatPace(a.averageSpeed)}`
@@ -302,14 +298,14 @@ export async function getCoachingData(userId: string): Promise<string> {
     }
   } else {
     lines.push('')
-    lines.push('[최근 활동 없음]')
+    lines.push('## 최근 활동 없음')
     lines.push('- 최근 4주간 러닝 기록이 없습니다.')
   }
 
   // 러너 프로필 (8-5)
   if (dbUserWithGoal?.birthYear || dbUserWithGoal?.measuredMaxHR) {
     lines.push('')
-    lines.push('[러너 프로필]')
+    lines.push('## 러너 프로필')
     if (dbUserWithGoal.birthYear) {
       lines.push(`- 출생연도: ${dbUserWithGoal.birthYear}년 (${now.getFullYear() - dbUserWithGoal.birthYear}세)`)
     }
@@ -325,7 +321,7 @@ export async function getCoachingData(userId: string): Promise<string> {
   const goal = dbUserWithGoal?.goal
   if (goal) {
     lines.push('')
-    lines.push('[훈련 목표]')
+    lines.push('## 훈련 목표')
     const goalTypeLabels: Record<GoalType, string> = {
       race_completion: '레이스 완주',
       pace_improvement: '페이스 단축',
